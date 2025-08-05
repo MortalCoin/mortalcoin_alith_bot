@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  mortalcoin-bot:
+    build: .
+    container_name: mortalcoin-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - bot-data:/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - mortalcoin-network
+
+  # Optional: Redis for signature exchange
+  redis:
+    image: redis:7-alpine
+    container_name: mortalcoin-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - mortalcoin-network
+
+volumes:
+  bot-data:
+  redis-data:
+
+networks:
+  mortalcoin-network:
+    driver: bridge
