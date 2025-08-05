@@ -183,7 +183,7 @@ class BackendClient:
                 
                 if response.status == 200:
                     result = await response.json()
-                    signature_hex = result.get("signature")
+                    signature_hex = result.get("backend_signature")
                     if signature_hex:
                         return bytes.fromhex(signature_hex.replace("0x", ""))
                     else:

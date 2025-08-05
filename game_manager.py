@@ -418,7 +418,12 @@ class GameManager:
                         opponent_pool = game_info["player1Pool"]
                         
                     # Get market data from our pool
-                    market_data = await self._get_market_data(my_pool)
+                    try:
+                        market_data = await self._get_market_data(my_pool)
+                    except Exception as e:
+                        logger.error(f"Failed to get market data: {e}")
+                        await asyncio.sleep(5)
+                        continue
                     
                     # Calculate game state
                     time_elapsed = (datetime.now() - game_start_time).total_seconds()
@@ -436,6 +441,9 @@ class GameManager:
                         my_pnl = game_info["player2Pnl"]
                         opponent_pnl = game_info["player1Pnl"]
                         
+                    # Debug logging for PnL values
+                    logger.debug(f"Raw PnL values - my_pnl: {my_pnl} ({type(my_pnl)}), opponent_pnl: {opponent_pnl} ({type(opponent_pnl)})")
+                        
                     # Log game state
                     logger.info(f"\033[96m📊 Game {game_id} - Time remaining: {time_remaining:.1f}s, My PnL: {my_pnl}, Opponent PnL: {opponent_pnl}\033[0m")
                     
@@ -443,12 +451,21 @@ class GameManager:
                     opponent_has_position = opponent_position["state"] == 1  # Open state (PositionState.Open)
                     
                     # Create game state for AI
+                    # Handle PnL values safely - they might be negative or very large
+                    try:
+                        opponent_pnl_eth = Web3.from_wei(abs(opponent_pnl), "ether")
+                        my_pnl_eth = Web3.from_wei(abs(my_pnl), "ether")
+                    except (ValueError, OverflowError) as e:
+                        logger.warning(f"PnL conversion error: {e}, using 0")
+                        opponent_pnl_eth = 0
+                        my_pnl_eth = 0
+                    
                     game_state = GameState(
                         game_id=game_id,
                         opponent_address=opponent_address,
                         opponent_has_position=opponent_has_position,
-                        opponent_pnl=Web3.from_wei(opponent_pnl, "ether"),
-                        my_pnl=Web3.from_wei(my_pnl, "ether"),
+                        opponent_pnl=opponent_pnl_eth,
+                        my_pnl=my_pnl_eth,
                         time_remaining_seconds=int(time_remaining),
                         my_position=current_position,
                         my_position_entry_price=position_entry_price
@@ -456,11 +473,21 @@ class GameManager:
                     
                     # Get trading decision from Alith AI
                     logger.info(f"\033[94m🤖 Getting AI trading decision...\033[0m")
-                    decision = self.alith_client.get_trading_decision(market_data, game_state)
-                    logger.info(f"\033[93m🎯 AI Decision: {decision.action} - {decision.reasoning}\033[0m")
+                    try:
+                        decision = self.alith_client.get_trading_decision(market_data, game_state)
+                        logger.info(f"\033[93m🎯 AI Decision: {decision.action} - {decision.reasoning}\033[0m")
+                    except Exception as e:
+                        logger.error(f"Failed to get AI decision: {e}")
+                        await asyncio.sleep(5)
+                        continue
                     
                     # Execute trading decision
-                    await self._execute_decision(game_id, decision, current_position, position_open_time)
+                    try:
+                        await self._execute_decision(game_id, decision, current_position, position_open_time)
+                    except Exception as e:
+                        logger.error(f"Failed to execute decision: {e}")
+                        await asyncio.sleep(5)
+                        continue
                     
                     # Update position tracking
                     if decision.action == "open_long":
@@ -507,13 +534,22 @@ class GameManager:
             if decision.action in ["open_long", "open_short"] and not current_position:
                 # Open a new position
                 direction = Direction.Long if decision.action == "open_long" else Direction.Short
-                nonce = random.randint(1, 1000000)
+                # Ensure nonce is within valid uint256 range
+                nonce = random.randint(1, min(1000000, 2**256 - 1))
                 
                 logger.info(f"\033[94m📈 Opening {direction.name} position in game {game_id}\033[0m")
                 logger.info(f"\033[93m🎲 Generated nonce: {nonce}\033[0m")
                 
                 # Calculate hashed direction
                 from eth_abi import encode
+                # Ensure all values are within valid ranges
+                if game_id < 0 or game_id > 2**256 - 1:
+                    logger.error(f"Invalid game_id for hashing: {game_id}")
+                    return
+                if nonce < 0 or nonce > 2**256 - 1:
+                    logger.error(f"Invalid nonce for hashing: {nonce}")
+                    return
+                    
                 encoded_data = encode(['uint256', 'uint8', 'uint256'], [game_id, direction, nonce])
                 hashed_direction = self.web3.keccak(encoded_data)
                 
@@ -535,6 +571,11 @@ class GameManager:
                 logger.info(f"\033[93m📋 Backend signature: {backend_signature.hex()}\033[0m")
                 
                 # Build and send transaction
+                # Ensure game_id is within valid range
+                if game_id < 0 or game_id > 2**256 - 1:
+                    logger.error(f"Invalid game_id: {game_id}")
+                    return
+                    
                 post_position_function = self.contract.functions.postPosition(
                     game_id,
                     hashed_direction,
@@ -562,20 +603,39 @@ class GameManager:
                 logger.info(f"\033[92m💾 Position recorded in database with nonce: {nonce}\033[0m")
                 
             elif decision.action == "close_position" and current_position:
+                logger.info(f"[TRACE] Entered close_position block with current_position={current_position}, position_open_time={position_open_time}")
                 # Check minimum hold time
                 if position_open_time:
                     hold_time = (datetime.now() - position_open_time).total_seconds()
+                    logger.info(f"[TRACE] Hold time: {hold_time}, required minimum: {self.config.position_hold_time_min}")
                     if hold_time < self.config.position_hold_time_min:
                         logger.debug(f"\033[33m⏳ Position held for {hold_time}s, waiting for minimum {self.config.position_hold_time_min}s\033[0m")
+                        logger.info("[TRACE] Returning early due to minimum hold time not met.")
                         return
-                        
+                
                 # Close current position
                 direction = Direction.Long if current_position == "long" else Direction.Short
-                
                 logger.info(f"\033[94m🔒 Closing {direction.name} position in game {game_id}\033[0m")
                 
-                # Build and send close position transaction
-                close_position_function = self.contract.functions.closePosition(game_id)
+                # Get the nonce from the last position record
+                last_position = self.db.get_last_position(game_id)
+                logger.info(f"[TRACE] last_position from DB: {last_position}")
+                nonce = last_position.nonce if last_position else 0
+                logger.info(f"[TRACE] Using nonce for closePosition: {nonce}")
+                
+                # Ensure game_id is within valid range
+                if game_id < 0 or game_id > 2**256 - 1:
+                    logger.error(f"Invalid game_id: {game_id}")
+                    logger.info("[TRACE] Returning early due to invalid game_id.")
+                    return
+                
+                # Ensure nonce is within valid range
+                if nonce < 0 or nonce > 2**256 - 1:
+                    logger.warning(f"Invalid nonce value: {nonce}, using 0")
+                    nonce = 0
+                
+                logger.info("[TRACE] About to send closePosition transaction...")
+                close_position_function = self.contract.functions.closePosition(game_id, direction, nonce)
                 
                 tx_hash, receipt = build_sign_send_transaction(
                     self.web3,
@@ -606,8 +666,18 @@ class GameManager:
                 direction = Direction.Long  # Default
                 nonce = 0
                 
+            # Ensure game_id is within valid range
+            if game_id < 0 or game_id > 2**256 - 1:
+                logger.error(f"Invalid game_id in finish_game: {game_id}")
+                return
+                
             # Build and send finish game transaction
             tx_params = {'from': self.bot_address}
+            
+            # Ensure nonce is within valid range
+            if nonce < 0 or nonce > 2**256 - 1:
+                logger.warning(f"Invalid nonce value: {nonce}, using 0")
+                nonce = 0
             
             tx_hash, receipt = await asyncio.get_event_loop().run_in_executor(
                 None,
