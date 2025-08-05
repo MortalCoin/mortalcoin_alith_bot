@@ -35,7 +35,6 @@ class BotConfig:
     bet_amount_eth: float = 0.0001
     
     # Game settings
-    position_hold_time_min: int = 10  # Minimum time to hold a position in seconds
     position_hold_time_max: int = 50  # Maximum time to hold a position in seconds (game is 60s)
     game_duration_seconds: int = 60  # Fixed game duration
     
@@ -69,7 +68,7 @@ class BotConfig:
             privy_key=os.environ["MORTALCOIN_PRIVY_KEY"],
             bet_amount_eth=float(os.getenv("MORTALCOIN_BET_AMOUNT", "0.0001")),
             bot_pool_address=os.environ["MORTALCOIN_BOT_POOL_ADDRESS"],
-            position_hold_time_min=int(os.getenv("MORTALCOIN_POSITION_HOLD_MIN", "10")),
+
             position_hold_time_max=int(os.getenv("MORTALCOIN_POSITION_HOLD_MAX", "50")),
             game_duration_seconds=int(os.getenv("MORTALCOIN_GAME_DURATION", "60")),
             monitor_interval_seconds=int(os.getenv("MORTALCOIN_MONITOR_INTERVAL", "5")),

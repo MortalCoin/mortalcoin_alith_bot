@@ -604,14 +604,10 @@ class GameManager:
                 
             elif decision.action == "close_position" and current_position:
                 logger.info(f"[TRACE] Entered close_position block with current_position={current_position}, position_open_time={position_open_time}")
-                # Check minimum hold time
+                # Log hold time for debugging (no restrictions)
                 if position_open_time:
                     hold_time = (datetime.now() - position_open_time).total_seconds()
-                    logger.info(f"[TRACE] Hold time: {hold_time}, required minimum: {self.config.position_hold_time_min}")
-                    if hold_time < self.config.position_hold_time_min:
-                        logger.debug(f"\033[33m⏳ Position held for {hold_time}s, waiting for minimum {self.config.position_hold_time_min}s\033[0m")
-                        logger.info("[TRACE] Returning early due to minimum hold time not met.")
-                        return
+                    logger.info(f"[TRACE] Hold time: {hold_time}s (no minimum restriction)")
                 
                 # Close current position
                 direction = Direction.Long if current_position == "long" else Direction.Short

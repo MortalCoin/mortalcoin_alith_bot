@@ -123,7 +123,7 @@ docker-compose up -d
 ### Trading Parameters
 
 - `MORTALCOIN_BET_AMOUNT`: Bet amount in ETH (default: 0.0001)
-- `MORTALCOIN_POSITION_HOLD_MIN`: Minimum position hold time in seconds (default: 10)
+- `MORTALCOIN_POSITION_HOLD_MIN`: ~~Minimum position hold time in seconds (default: 10)~~ **Removed - no minimum hold time restriction**
 - `MORTALCOIN_POSITION_HOLD_MAX`: Maximum position hold time in seconds (default: 50)
 
 ### Alith AI Configuration
