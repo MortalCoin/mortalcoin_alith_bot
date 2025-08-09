@@ -1,0 +1,2716 @@
+openapi: 3.1.0
+info:
+  title: Mortal Coin API
+  description: 'API for MortalCoin: The Ultimate Crypto Battle.'
+  version: 0.1.0
+paths:
+  /api/v1/games/coins/:
+    get:
+      tags:
+        - games
+      summary: Get All Coins
+      description: Get all coins.
+      operationId: get_all_coins_api_v1_games_coins__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Coin'
+                type: array
+                title: Response Get All Coins Api V1 Games Coins  Get
+  /api/v1/games/game-sessions/:
+    get:
+      tags:
+        - games
+      summary: Get User Game Sessions
+      description: Get all game sessions ids.
+      operationId: get_user_game_sessions_api_v1_games_game_sessions__get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                exclusiveMaximum: 9223372036854776000
+                exclusiveMinimum: 0
+              - type: 'null'
+            title: Limit
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            exclusiveMaximum: 9223372036854776000
+            default: 0
+            title: Offset
+        - name: ladder_type_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                exclusiveMaximum: 9223372036854776000
+                exclusiveMinimum: 0
+              - type: 'null'
+            title: Ladder Type Id
+        - name: statuses
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: array
+                items:
+                  $ref: '#/components/schemas/GameStatus'
+              - type: 'null'
+            title: Statuses
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResultDTO_GameSession_'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+        - games
+      summary: Create New Game Session
+      description: Create new game session.
+      operationId: create_new_game_session_api_v1_games_game_sessions__post
+      security:
+        - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNewLadderAPIDTO'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UUIDDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/games/game-sessions/{game_session_id}/:
+    get:
+      tags:
+        - games
+      summary: Get Game Session By Id
+      description: Get game session by id.
+      operationId: get_game_session_by_id_api_v1_games_game_sessions__game_session_id___get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: game_session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Game Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSession'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/games/ladder-types/:
+    get:
+      tags:
+        - games
+      summary: Get All Ladder Types
+      description: Get all ladder types.
+      operationId: get_all_ladder_types_api_v1_games_ladder_types__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/LadderType'
+                type: array
+                title: Response Get All Ladder Types Api V1 Games Ladder Types  Get
+  /api/v1/games/trading-fights/:
+    get:
+      tags:
+        - games
+      summary: Get All Trading Fights
+      description: Get all trading fights.
+      operationId: get_all_trading_fights_api_v1_games_trading_fights__get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                exclusiveMaximum: 9223372036854776000
+                exclusiveMinimum: 0
+              - type: 'null'
+            title: Limit
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            exclusiveMaximum: 9223372036854776000
+            default: 0
+            title: Offset
+        - name: statuses
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: array
+                items:
+                  $ref: '#/components/schemas/TradingFightStatus'
+              - type: 'null'
+            title: Statuses
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: uuid
+              - type: 'null'
+            title: User Id
+        - name: is_creator_online
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: boolean
+              - type: 'null'
+            title: Is Creator Online
+        - name: exclude_user_created_fights
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: boolean
+              - type: 'null'
+            description: >-
+              Exclude fights where user with passed user_id is creator. If
+              passed, user_id must be set.
+            title: Exclude User Created Fights
+          description: >-
+            Exclude fights where user with passed user_id is creator. If passed,
+            user_id must be set.
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/PaginatedResultDTO_TradingFightIDWithStatus_
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+        - games
+      summary: Add Trading Fight
+      description: Add trading fight.
+      operationId: add_trading_fight_api_v1_games_trading_fights__post
+      security:
+        - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTradeFightAPIDTO'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UUIDDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/games/trading-fights/{trading_fight_id}/:
+    get:
+      tags:
+        - games
+      summary: Get Trading Fight By Id
+      description: Get trading fight by id.
+      operationId: >-
+        get_trading_fight_by_id_api_v1_games_trading_fights__trading_fight_id___get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: trading_fight_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Trading Fight Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradingFightResult'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/games/trading-fights/{trading_fight_id}/close-position/:
+    post:
+      tags:
+        - games
+      summary: Close Position
+      description: Close position for trading fight.
+      operationId: >-
+        close_position_api_v1_games_trading_fights__trading_fight_id__close_position__post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: trading_fight_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Trading Fight Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/games/trading-fights/{trading_fight_id}/open-position/:
+    post:
+      tags:
+        - games
+      summary: Open Position
+      description: Open position for trading fight.
+      operationId: >-
+        open_position_api_v1_games_trading_fights__trading_fight_id__open_position__post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: trading_fight_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Trading Fight Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenPositionAPIDTO'
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/games/trading-fights/{trading_fight_id}/add-opponent/:
+    post:
+      tags:
+        - games
+      summary: Add Opponent To Fight
+      description: Add opponent to trading fight.
+      operationId: >-
+        add_opponent_to_fight_api_v1_games_trading_fights__trading_fight_id__add_opponent__post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: trading_fight_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Trading Fight Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinSignatureRequestAPIDTO'
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/games/trading-fights/{trading_fight_id}/confirm-opponent/:
+    post:
+      tags:
+        - games
+      summary: Confirm Opponent To Fight
+      description: Confirm opponent to trading fight.
+      operationId: >-
+        confirm_opponent_to_fight_api_v1_games_trading_fights__trading_fight_id__confirm_opponent__post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: trading_fight_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Trading Fight Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignedJoinRequestDTO'
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/games/trading-fights/{trading_fight_id}/close/:
+    post:
+      tags:
+        - games
+      summary: Close Trading Fight
+      description: Close trading fight game.
+      operationId: >-
+        close_trading_fight_api_v1_games_trading_fights__trading_fight_id__close__post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: trading_fight_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Trading Fight Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/games/trading-fights/{trading_fight_id}/start-fight/:
+    post:
+      tags:
+        - games
+      summary: Trading Fight
+      description: Start trading fight.
+      operationId: >-
+        trading_fight_api_v1_games_trading_fights__trading_fight_id__start_fight__post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: trading_fight_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Trading Fight Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/games/trading-fights/sign-position/:
+    post:
+      tags:
+        - games
+      summary: Sign Position
+      description: Sign position and persist plaintext params if provided.
+      operationId: sign_position_api_v1_games_trading_fights_sign_position__post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Position'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignedPosition'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+        - HTTPBearer: []
+  /api/v1/users/auth/:
+    post:
+      tags:
+        - users
+      summary: Auth
+      description: Telegram Authentication.
+      operationId: auth_api_v1_users_auth__post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthDataDTO'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/users/auth/refresh/:
+    post:
+      tags:
+        - users
+      summary: Refresh Token
+      description: Get new access token by refresh token.
+      operationId: refresh_token_api_v1_users_auth_refresh__post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessTokenDTO'
+      security:
+        - HTTPBearer: []
+        - HTTPBearer: []
+  /api/v1/users/me/:
+    get:
+      tags:
+        - users
+      summary: Get User By Himself
+      description: Get user by himself.
+      operationId: get_user_by_himself_api_v1_users_me__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetails'
+      security:
+        - HTTPBearer: []
+  /api/v1/users/me/mortal-points/:
+    get:
+      tags:
+        - users
+      summary: Get User Mortal Points
+      description: Get user mortal point transactions.
+      operationId: get_user_mortal_points_api_v1_users_me_mortal_points__get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                exclusiveMaximum: 9223372036854776000
+                exclusiveMinimum: 0
+              - type: 'null'
+            title: Limit
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            exclusiveMaximum: 9223372036854776000
+            default: 0
+            title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/PaginatedResultDTO_MortalPointTransaction_
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/users/me/referral/:
+    get:
+      tags:
+        - users
+      summary: Get Referral Statistics
+      description: Get referral statistics for user.
+      operationId: get_referral_statistics_api_v1_users_me_referral__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralStatisticsExtendedDTO'
+      security:
+        - HTTPBearer: []
+  /api/v1/users/me/wallet/:
+    post:
+      tags:
+        - users
+      summary: Set Wallet Address
+      description: Add wallet address to user.
+      operationId: set_wallet_address_api_v1_users_me_wallet__post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddWalletAddressDTO'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+        - HTTPBearer: []
+    delete:
+      tags:
+        - users
+      summary: Remove Wallet Address
+      description: Remove wallet address from user.
+      operationId: remove_wallet_address_api_v1_users_me_wallet__delete
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+        - HTTPBearer: []
+  /api/v1/tickets/purchases/:
+    get:
+      tags:
+        - tickets
+      summary: Get User Ticket Purchases
+      description: Get user ticket purchases.
+      operationId: get_user_ticket_purchases_api_v1_tickets_purchases__get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                exclusiveMaximum: 9223372036854776000
+                exclusiveMinimum: 0
+              - type: 'null'
+            title: Limit
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            exclusiveMaximum: 9223372036854776000
+            default: 0
+            title: Offset
+        - name: is_paid
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: boolean
+              - type: 'null'
+            title: Is Paid
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResultDTO_TicketPurchase_'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tickets/free/:
+    get:
+      tags:
+        - tickets
+      summary: Get Free Ticket Status
+      description: Get user free tickets status.
+      operationId: get_free_ticket_status_api_v1_tickets_free__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FreeTicket'
+      security:
+        - HTTPBearer: []
+    post:
+      tags:
+        - tickets
+      summary: Add Free Tickets To User
+      description: Add free tickets to user.
+      operationId: add_free_tickets_to_user_api_v1_tickets_free__post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddFreeTicketsResponseDTO'
+      security:
+        - HTTPBearer: []
+  /api/v1/tickets/ad/:
+    get:
+      tags:
+        - tickets
+      summary: Get Ad Ticket Status
+      description: Get user ad tickets status.
+      operationId: get_ad_ticket_status_api_v1_tickets_ad__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdTicket'
+      security:
+        - HTTPBearer: []
+    post:
+      tags:
+        - tickets
+      summary: Add Ad Tickets To User
+      description: Add ad tickets to user.
+      operationId: add_ad_tickets_to_user_api_v1_tickets_ad__post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddFreeTicketsResponseDTO'
+      security:
+        - HTTPBearer: []
+  /api/v1/tickets/:
+    get:
+      tags:
+        - tickets
+      summary: Get All Ticket Prices
+      description: Get list of ticket prices.
+      operationId: get_all_ticket_prices_api_v1_tickets__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - items:
+                      $ref: '#/components/schemas/TicketPrice'
+                    type: array
+                  - items:
+                      $ref: '#/components/schemas/TicketPriceWithUserPurchaseCountDTO'
+                    type: array
+                title: Response Get All Ticket Prices Api V1 Tickets  Get
+      security:
+        - HTTPBearer: []
+  /api/v1/tickets/{ticket_price_id}/:
+    post:
+      tags:
+        - tickets
+      summary: Create Purchase Tickets Link
+      description: Create link for purchase tickets.
+      operationId: create_purchase_tickets_link_api_v1_tickets__ticket_price_id___post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: ticket_price_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            exclusiveMaximum: 9223372036854776000
+            exclusiveMinimum: 0
+            title: Ticket Price Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: string
+                title: >-
+                  Response Create Purchase Tickets Link Api V1 Tickets  Ticket
+                  Price Id   Post
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tasks/telegram-subscriptions/:
+    get:
+      tags:
+        - tasks
+      summary: Get Subscription Tasks
+      description: |-
+        Get list of subscription tasks.
+
+        If user is authenticated, returns subscription tasks for user
+        (with status). Otherwise, returns all subscription tasks.
+      operationId: get_subscription_tasks_api_v1_tasks_telegram_subscriptions__get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: is_active
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: boolean
+              - type: 'null'
+            title: Is Active
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/SubscriptionTask'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/SubscriptionTaskWithStatus'
+                title: >-
+                  Response Get Subscription Tasks Api V1 Tasks Telegram
+                  Subscriptions  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tasks/telegram-subscriptions/{task_id}/:
+    post:
+      tags:
+        - tasks
+      summary: Update Subscription Task
+      description: Update subscription task status.
+      operationId: >-
+        update_subscription_task_api_v1_tasks_telegram_subscriptions__task_id___post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Task Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tasks/social/:
+    get:
+      tags:
+        - tasks
+      summary: Get Social Tasks
+      description: |-
+        Get social tasks.
+
+        If user is authenticated, returns social tasks for user (with status).
+        Otherwise, returns all social tasks.
+      operationId: get_social_tasks_api_v1_tasks_social__get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: is_active
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: boolean
+              - type: 'null'
+            title: Is Active
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/SocialTask'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/SocialTaskWithStatus'
+                title: Response Get Social Tasks Api V1 Tasks Social  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tasks/social/{task_id}/:
+    post:
+      tags:
+        - tasks
+      summary: Update Social Task
+      description: Update social task status.
+      operationId: update_social_task_api_v1_tasks_social__task_id___post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Task Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tasks/game-sessions/:
+    get:
+      tags:
+        - tasks
+      summary: Get Game Session Tasks
+      description: Get game session tasks.
+      operationId: get_game_session_tasks_api_v1_tasks_game_sessions__get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: is_active
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: boolean
+              - type: 'null'
+            title: Is Active
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/GameSessionTask'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/GameSessionTaskWithStatus'
+                title: >-
+                  Response Get Game Session Tasks Api V1 Tasks Game Sessions 
+                  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tasks/game-sessions/{task_id}/:
+    post:
+      tags:
+        - tasks
+      summary: Update Game Session Task
+      description: Update game session task status.
+      operationId: update_game_session_task_api_v1_tasks_game_sessions__task_id___post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Task Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tasks/fights/:
+    get:
+      tags:
+        - tasks
+      summary: Get Fight Tasks
+      description: Get fight tasks.
+      operationId: get_fight_tasks_api_v1_tasks_fights__get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: is_active
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: boolean
+              - type: 'null'
+            title: Is Active
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/FightTask'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/FightTaskWithStatus'
+                title: Response Get Fight Tasks Api V1 Tasks Fights  Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/tasks/fights/{task_id}/:
+    post:
+      tags:
+        - tasks
+      summary: Update Fight Task
+      description: Update fight task status.
+      operationId: update_fight_task_api_v1_tasks_fights__task_id___post
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            title: Task Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/statistics/leaderboard/:
+    get:
+      tags:
+        - statistics
+      summary: Get Top Players
+      description: Get list of top players.
+      operationId: get_top_players_api_v1_statistics_leaderboard__get
+      parameters:
+        - name: start_date
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: date-time
+              - type: 'null'
+            title: Start Date
+        - name: finish_date
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: date-time
+              - type: 'null'
+            title: Finish Date
+        - name: limit
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: integer
+                exclusiveMaximum: 9223372036854776000
+                exclusiveMinimum: 0
+              - type: 'null'
+            title: Limit
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            exclusiveMaximum: 9223372036854776000
+            default: 0
+            title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResultDTO_TopPlayerDTO_'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/statistics/leaderboard/me/:
+    get:
+      tags:
+        - statistics
+      summary: Get Player Rank
+      description: Get player rank.
+      operationId: get_player_rank_api_v1_statistics_leaderboard_me__get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: start_date
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: date-time
+              - type: 'null'
+            title: Start Date
+        - name: finish_date
+          in: query
+          required: false
+          schema:
+            anyOf:
+              - type: string
+                format: date-time
+              - type: 'null'
+            title: Finish Date
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopPlayerDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    AccessTokenDTO:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+      type: object
+      required:
+        - access_token
+      title: AccessTokenDTO
+      description: Access token DTO.
+    AdTicket:
+      properties:
+        daily_usage_count:
+          type: integer
+          minimum: 0
+          title: Daily Usage Count
+        max_tickets_count:
+          type: integer
+          exclusiveMinimum: 0
+          title: Max Tickets Count
+        last_usage:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Last Usage
+        seconds_until_next_ad_ready:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Seconds Until Next Ad Ready
+          description: |-
+            Seconds until next ticket purchase.
+
+            If limit is not reached seconds_until_next_ad_ready is diff
+            between next_time_purchase and current time
+            otherwise seconds_until_next_ad_ready is diff between
+            next day and current time.
+          readOnly: true
+        is_ad_ready:
+          type: boolean
+          title: Is Ad Ready
+          description: Check if ad is ready.
+          readOnly: true
+      type: object
+      required:
+        - daily_usage_count
+        - last_usage
+        - seconds_until_next_ad_ready
+        - is_ad_ready
+      title: AdTicket
+      description: User ad tickets model.
+    AddFreeTicketsResponseDTO:
+      properties:
+        tickets_added:
+          type: integer
+          title: Tickets Added
+      type: object
+      required:
+        - tickets_added
+      title: AddFreeTicketsResponseDTO
+      description: DTO for adding free tickets response.
+    AddWalletAddressDTO:
+      properties:
+        wallet_address:
+          type: string
+          title: Wallet Address
+      type: object
+      required:
+        - wallet_address
+      title: AddWalletAddressDTO
+      description: DTO for adding wallet address.
+    AuthDataDTO:
+      properties:
+        token:
+          type: string
+          title: Token
+        referral:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Referral
+      type: object
+      required:
+        - token
+      title: AuthDataDTO
+      description: DTO with authentication data.
+    Coin:
+      properties:
+        name:
+          type: string
+          title: Name
+        symbol:
+          type: string
+          title: Symbol
+        icon_name:
+          type: string
+          title: Icon Name
+        pool_address:
+          type: string
+          title: Pool Address
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          title: Id
+      type: object
+      required:
+        - name
+        - symbol
+        - icon_name
+        - pool_address
+        - id
+      title: Coin
+      description: Coin model.
+    CreateNewLadderAPIDTO:
+      properties:
+        user_coin_id:
+          type: integer
+          title: User Coin Id
+        ladder_type:
+          type: string
+          title: Ladder Type
+      type: object
+      required:
+        - user_coin_id
+        - ladder_type
+      title: CreateNewLadderAPIDTO
+      description: Create new ladder for game session with API.
+    CreateTradeFightAPIDTO:
+      properties:
+        user_coin_id:
+          type: integer
+          exclusiveMaximum: 9223372036854776000
+          exclusiveMinimum: 0
+          title: User Coin Id
+        txid:
+          type: string
+          title: Txid
+      type: object
+      required:
+        - user_coin_id
+        - txid
+      title: CreateTradeFightAPIDTO
+    Fight:
+      properties:
+        user_coin_start_price:
+          type: string
+          title: User Coin Start Price
+        opponent_coin_start_price:
+          type: string
+          title: Opponent Coin Start Price
+        user_coin_end_price:
+          type: string
+          title: User Coin End Price
+        opponent_coin_end_price:
+          type: string
+          title: Opponent Coin End Price
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          title: Id
+        stage:
+          type: integer
+          exclusiveMinimum: 0
+          title: Stage
+        mp_earned:
+          type: integer
+          minimum: 0
+          title: Mp Earned
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        user_coin_price_change:
+          type: string
+          title: User Coin Price Change
+          description: User coin price delta.
+          readOnly: true
+        opponent_coin_price_change:
+          type: string
+          title: Opponent Coin Price Change
+          description: Opponent coin price delta.
+          readOnly: true
+        user_percentage_change:
+          type: string
+          title: User Percentage Change
+          description: User percentage change.
+          readOnly: true
+        opponent_percentage_change:
+          type: string
+          title: Opponent Percentage Change
+          description: Opponent percentage change.
+          readOnly: true
+        is_win:
+          type: boolean
+          title: Is Win
+          description: Determine if the user won the fight.
+          readOnly: true
+      type: object
+      required:
+        - user_coin_start_price
+        - opponent_coin_start_price
+        - user_coin_end_price
+        - opponent_coin_end_price
+        - id
+        - stage
+        - mp_earned
+        - created_at
+        - user_coin_price_change
+        - opponent_coin_price_change
+        - user_percentage_change
+        - opponent_percentage_change
+        - is_win
+      title: Fight
+      description: Fight model.
+    FightTask:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        title:
+          type: string
+          title: Title
+        tickets_reward:
+          type: integer
+          exclusiveMinimum: 0
+          title: Tickets Reward
+        is_active:
+          type: boolean
+          title: Is Active
+        start_at:
+          type: string
+          format: date-time
+          title: Start At
+        end_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: End At
+        target_value:
+          type: integer
+          exclusiveMinimum: 0
+          title: Target Value
+        coin_id:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Coin Id
+        recurrence_type:
+          $ref: '#/components/schemas/RecurrenceType'
+      type: object
+      required:
+        - id
+        - title
+        - tickets_reward
+        - is_active
+        - start_at
+        - target_value
+        - recurrence_type
+      title: FightTask
+      description: Fight task model.
+    FightTaskWithStatus:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        title:
+          type: string
+          title: Title
+        tickets_reward:
+          type: integer
+          exclusiveMinimum: 0
+          title: Tickets Reward
+        is_active:
+          type: boolean
+          title: Is Active
+        start_at:
+          type: string
+          format: date-time
+          title: Start At
+        end_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: End At
+        target_value:
+          type: integer
+          exclusiveMinimum: 0
+          title: Target Value
+        coin_id:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Coin Id
+        recurrence_type:
+          $ref: '#/components/schemas/RecurrenceType'
+        current_progress:
+          type: integer
+          minimum: 0
+          title: Current Progress
+          default: 0
+        last_completed_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Last Completed At
+        is_completed:
+          type: boolean
+          title: Is Completed
+          description: Check if task is completed.
+          readOnly: true
+        seconds_until_progress_reset:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Seconds Until Progress Reset
+          description: Seconds until progress reset.
+          readOnly: true
+      type: object
+      required:
+        - id
+        - title
+        - tickets_reward
+        - is_active
+        - start_at
+        - target_value
+        - recurrence_type
+        - is_completed
+        - seconds_until_progress_reset
+      title: FightTaskWithStatus
+      description: Fight task model with status.
+    FreeTicket:
+      properties:
+        max_tickets_count:
+          type: integer
+          title: Max Tickets Count
+        ready_tickets:
+          type: integer
+          minimum: 0
+          title: Ready Tickets
+        seconds_until_next_ticket_ready:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Seconds Until Next Ticket Ready
+          description: Seconds until next ticket purchase.
+          readOnly: true
+      type: object
+      required:
+        - ready_tickets
+        - seconds_until_next_ticket_ready
+      title: FreeTicket
+      description: User free tickets model.
+    GameSession:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        fights:
+          items:
+            anyOf:
+              - $ref: '#/components/schemas/Fight'
+              - type: 'null'
+          type: array
+          title: Fights
+          default: []
+        ladder:
+          $ref: '#/components/schemas/Ladder'
+        user_coin:
+          $ref: '#/components/schemas/Coin'
+        status:
+          $ref: '#/components/schemas/GameStatus'
+          default: Wait for next fight
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+        current_stage:
+          type: integer
+          exclusiveMinimum: 0
+          title: Current Stage
+          description: Current game stage.
+          readOnly: true
+      type: object
+      required:
+        - id
+        - ladder
+        - user_coin
+        - created_at
+        - updated_at
+        - user_id
+        - current_stage
+      title: GameSession
+      description: Game model.
+    GameSessionTask:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        title:
+          type: string
+          title: Title
+        tickets_reward:
+          type: integer
+          exclusiveMinimum: 0
+          title: Tickets Reward
+        is_active:
+          type: boolean
+          title: Is Active
+        start_at:
+          type: string
+          format: date-time
+          title: Start At
+        end_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: End At
+        target_value:
+          type: integer
+          exclusiveMinimum: 0
+          title: Target Value
+        coin_id:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Coin Id
+        recurrence_type:
+          $ref: '#/components/schemas/RecurrenceType'
+        ladder_type_id:
+          type: integer
+          exclusiveMinimum: 0
+          title: Ladder Type Id
+      type: object
+      required:
+        - id
+        - title
+        - tickets_reward
+        - is_active
+        - start_at
+        - target_value
+        - recurrence_type
+        - ladder_type_id
+      title: GameSessionTask
+      description: Game session task model.
+    GameSessionTaskWithStatus:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        title:
+          type: string
+          title: Title
+        tickets_reward:
+          type: integer
+          exclusiveMinimum: 0
+          title: Tickets Reward
+        is_active:
+          type: boolean
+          title: Is Active
+        start_at:
+          type: string
+          format: date-time
+          title: Start At
+        end_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: End At
+        target_value:
+          type: integer
+          exclusiveMinimum: 0
+          title: Target Value
+        coin_id:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Coin Id
+        recurrence_type:
+          $ref: '#/components/schemas/RecurrenceType'
+        current_progress:
+          type: integer
+          minimum: 0
+          title: Current Progress
+          default: 0
+        last_completed_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: Last Completed At
+        ladder_type_id:
+          type: integer
+          exclusiveMinimum: 0
+          title: Ladder Type Id
+        is_completed:
+          type: boolean
+          title: Is Completed
+          description: Check if task is completed.
+          readOnly: true
+        seconds_until_progress_reset:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Seconds Until Progress Reset
+          description: Seconds until progress reset.
+          readOnly: true
+      type: object
+      required:
+        - id
+        - title
+        - tickets_reward
+        - is_active
+        - start_at
+        - target_value
+        - recurrence_type
+        - ladder_type_id
+        - is_completed
+        - seconds_until_progress_reset
+      title: GameSessionTaskWithStatus
+      description: Game session task model with status.
+    GameStatus:
+      type: string
+      enum:
+        - Win
+        - Lose
+        - Wait for next fight
+        - In progress
+      title: GameStatus
+      description: Current game status.
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    JoinSignatureRequestAPIDTO:
+      properties:
+        game_id:
+          type: string
+          title: Game Id
+        player2:
+          type: string
+          title: Player2
+        timestamp:
+          type: integer
+          title: Timestamp
+        ttl:
+          type: integer
+          title: Ttl
+        coin_id:
+          type: integer
+          exclusiveMinimum: 0
+          title: Coin Id
+      type: object
+      required:
+        - game_id
+        - player2
+        - timestamp
+        - ttl
+        - coin_id
+      title: JoinSignatureRequestAPIDTO
+      description: Join signature request DTO for API.
+    JoinSignatureRequestDTO:
+      properties:
+        game_id:
+          type: string
+          title: Game Id
+        player2:
+          type: string
+          title: Player2
+        timestamp:
+          type: integer
+          title: Timestamp
+        ttl:
+          type: integer
+          title: Ttl
+      type: object
+      required:
+        - game_id
+        - player2
+        - timestamp
+        - ttl
+      title: JoinSignatureRequestDTO
+      description: Join signature request DTO for service.
+    Ladder:
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          title: Id
+        ladder_type:
+          $ref: '#/components/schemas/LadderType'
+        coins:
+          items:
+            $ref: '#/components/schemas/Coin'
+          type: array
+          title: Coins
+      type: object
+      required:
+        - id
+        - ladder_type
+        - coins
+      title: Ladder
+      description: |-
+        Ladder model.
+
+        Contains information about actual ladder
+    LadderType:
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          title: Id
+        name:
+          type: string
+          title: Name
+        stages:
+          type: integer
+          exclusiveMinimum: 0
+          title: Stages
+        mortal_points_bonus:
+          type: integer
+          exclusiveMinimum: 0
+          title: Mortal Points Bonus
+      type: object
+      required:
+        - id
+        - name
+        - stages
+        - mortal_points_bonus
+      title: LadderType
+      description: |-
+        Ladder type model.
+
+        Contains information about the type of combat.
+    MortalPointSource:
+      type: string
+      enum:
+        - game_session
+      title: MortalPointSource
+      description: Enum of mortal point sources.
+    MortalPointTransaction:
+      properties:
+        quantity:
+          type: integer
+          exclusiveMinimum: 0
+          title: Quantity
+        source:
+          $ref: '#/components/schemas/MortalPointSource'
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+        - quantity
+        - source
+        - created_at
+      title: MortalPointTransaction
+      description: Model of mortal point transaction.
+    OpenPositionAPIDTO:
+      properties:
+        position:
+          $ref: '#/components/schemas/PositionEnum'
+      type: object
+      required:
+        - position
+      title: OpenPositionAPIDTO
+    OpenedTradingPosition:
+      properties:
+        position_start_price:
+          type: string
+          title: Position Start Price
+        position:
+          $ref: '#/components/schemas/PositionEnum'
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+        - position_start_price
+        - position
+        - updated_at
+      title: OpenedTradingPosition
+      description: Opened Trading Position data transfer object.
+    PaginatedResultDTO_GameSession_:
+      properties:
+        count:
+          type: integer
+          title: Count
+        is_next_exists:
+          type: boolean
+          title: Is Next Exists
+        is_previous_exists:
+          type: boolean
+          title: Is Previous Exists
+        page_number:
+          type: integer
+          title: Page Number
+        results:
+          items:
+            $ref: '#/components/schemas/GameSession'
+          type: array
+          title: Results
+      type: object
+      required:
+        - count
+        - is_next_exists
+        - is_previous_exists
+        - page_number
+        - results
+      title: PaginatedResultDTO[GameSession]
+    PaginatedResultDTO_MortalPointTransaction_:
+      properties:
+        count:
+          type: integer
+          title: Count
+        is_next_exists:
+          type: boolean
+          title: Is Next Exists
+        is_previous_exists:
+          type: boolean
+          title: Is Previous Exists
+        page_number:
+          type: integer
+          title: Page Number
+        results:
+          items:
+            $ref: '#/components/schemas/MortalPointTransaction'
+          type: array
+          title: Results
+      type: object
+      required:
+        - count
+        - is_next_exists
+        - is_previous_exists
+        - page_number
+        - results
+      title: PaginatedResultDTO[MortalPointTransaction]
+    PaginatedResultDTO_TicketPurchase_:
+      properties:
+        count:
+          type: integer
+          title: Count
+        is_next_exists:
+          type: boolean
+          title: Is Next Exists
+        is_previous_exists:
+          type: boolean
+          title: Is Previous Exists
+        page_number:
+          type: integer
+          title: Page Number
+        results:
+          items:
+            $ref: '#/components/schemas/TicketPurchase'
+          type: array
+          title: Results
+      type: object
+      required:
+        - count
+        - is_next_exists
+        - is_previous_exists
+        - page_number
+        - results
+      title: PaginatedResultDTO[TicketPurchase]
+    PaginatedResultDTO_TopPlayerDTO_:
+      properties:
+        count:
+          type: integer
+          title: Count
+        is_next_exists:
+          type: boolean
+          title: Is Next Exists
+        is_previous_exists:
+          type: boolean
+          title: Is Previous Exists
+        page_number:
+          type: integer
+          title: Page Number
+        results:
+          items:
+            $ref: '#/components/schemas/TopPlayerDTO'
+          type: array
+          title: Results
+      type: object
+      required:
+        - count
+        - is_next_exists
+        - is_previous_exists
+        - page_number
+        - results
+      title: PaginatedResultDTO[TopPlayerDTO]
+    PaginatedResultDTO_TradingFightIDWithStatus_:
+      properties:
+        count:
+          type: integer
+          title: Count
+        is_next_exists:
+          type: boolean
+          title: Is Next Exists
+        is_previous_exists:
+          type: boolean
+          title: Is Previous Exists
+        page_number:
+          type: integer
+          title: Page Number
+        results:
+          items:
+            $ref: '#/components/schemas/TradingFightIDWithStatus'
+          type: array
+          title: Results
+      type: object
+      required:
+        - count
+        - is_next_exists
+        - is_previous_exists
+        - page_number
+        - results
+      title: PaginatedResultDTO[TradingFightIDWithStatus]
+    Position:
+      properties:
+        gameId:
+          anyOf:
+            - type: integer
+            - type: string
+          title: Gameid
+        player:
+          type: string
+          title: Player
+        hashedDirection:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Hasheddirection
+        direction:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Direction
+        nonce:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Nonce
+      type: object
+      required:
+        - gameId
+        - player
+      title: Position
+      description: Trading fight position data transfer object.
+    PositionEnum:
+      type: string
+      enum:
+        - Long
+        - Short
+      title: PositionEnum
+      description: Position enum.
+    RecurrenceType:
+      type: string
+      enum:
+        - once
+        - daily
+        - weekly
+      title: RecurrenceType
+      description: Enum of task recurrence types.
+    ReferralStatisticsExtendedDTO:
+      properties:
+        invited_users:
+          type: integer
+          minimum: 0
+          title: Invited Users
+        claimed_rewards_quantity:
+          type: integer
+          minimum: 0
+          title: Claimed Rewards Quantity
+        inviter:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Inviter
+        wins_for_reward:
+          type: integer
+          exclusiveMinimum: 0
+          title: Wins For Reward
+          description: Number of wins of the invited user to get tickets
+        tickets_quantity_in_reward:
+          type: integer
+          exclusiveMinimum: 0
+          title: Tickets Quantity In Reward
+          description: Tickets in reward after fulfillment of conditions
+        claimed_tickets_quantity:
+          type: integer
+          title: Claimed Tickets Quantity
+          description: Quantity of rewarded tickets.
+          readOnly: true
+      type: object
+      required:
+        - invited_users
+        - claimed_rewards_quantity
+        - wins_for_reward
+        - tickets_quantity_in_reward
+        - claimed_tickets_quantity
+      title: ReferralStatisticsExtendedDTO
+      description: Extended referral statistics data transfer object.
+    SignedJoinRequestDTO:
+      properties:
+        signature:
+          type: string
+          title: Signature
+        original_request:
+          $ref: '#/components/schemas/JoinSignatureRequestDTO'
+      type: object
+      required:
+        - signature
+        - original_request
+      title: SignedJoinRequestDTO
+      description: Signed Join signature request.
+    SignedPosition:
+      properties:
+        backend_signature:
+          type: string
+          title: Backend Signature
+        signed_message:
+          $ref: '#/components/schemas/Position'
+      type: object
+      required:
+        - backend_signature
+        - signed_message
+      title: SignedPosition
+      description: Signed trading fight position data transfer object.
+    SocialTask:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        title:
+          type: string
+          title: Title
+        tickets_reward:
+          type: integer
+          exclusiveMinimum: 0
+          title: Tickets Reward
+        is_active:
+          type: boolean
+          title: Is Active
+        start_at:
+          type: string
+          format: date-time
+          title: Start At
+        end_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: End At
+        url:
+          type: string
+          title: Url
+      type: object
+      required:
+        - id
+        - title
+        - tickets_reward
+        - is_active
+        - start_at
+        - url
+      title: SocialTask
+      description: Social task model.
+    SocialTaskWithStatus:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        title:
+          type: string
+          title: Title
+        tickets_reward:
+          type: integer
+          exclusiveMinimum: 0
+          title: Tickets Reward
+        is_active:
+          type: boolean
+          title: Is Active
+        start_at:
+          type: string
+          format: date-time
+          title: Start At
+        end_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: End At
+        is_completed:
+          type: boolean
+          title: Is Completed
+        url:
+          type: string
+          title: Url
+      type: object
+      required:
+        - id
+        - title
+        - tickets_reward
+        - is_active
+        - start_at
+        - is_completed
+        - url
+      title: SocialTaskWithStatus
+      description: Social task model with status.
+    SubscriptionTask:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        title:
+          type: string
+          title: Title
+        tickets_reward:
+          type: integer
+          exclusiveMinimum: 0
+          title: Tickets Reward
+        is_active:
+          type: boolean
+          title: Is Active
+        start_at:
+          type: string
+          format: date-time
+          title: Start At
+        end_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: End At
+        channel_id:
+          type: string
+          title: Channel Id
+      type: object
+      required:
+        - id
+        - title
+        - tickets_reward
+        - is_active
+        - start_at
+        - channel_id
+      title: SubscriptionTask
+      description: Subscription to Telegram Channel task model.
+    SubscriptionTaskWithStatus:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        title:
+          type: string
+          title: Title
+        tickets_reward:
+          type: integer
+          exclusiveMinimum: 0
+          title: Tickets Reward
+        is_active:
+          type: boolean
+          title: Is Active
+        start_at:
+          type: string
+          format: date-time
+          title: Start At
+        end_at:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          title: End At
+        is_completed:
+          type: boolean
+          title: Is Completed
+        channel_id:
+          type: string
+          title: Channel Id
+      type: object
+      required:
+        - id
+        - title
+        - tickets_reward
+        - is_active
+        - start_at
+        - is_completed
+        - channel_id
+      title: SubscriptionTaskWithStatus
+      description: Subscription to Telegram Channel task model with status.
+    TicketPrice:
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          title: Id
+        quantity:
+          type: integer
+          exclusiveMinimum: 0
+          title: Quantity
+        price:
+          type: integer
+          exclusiveMinimum: 0
+          title: Price
+        limit:
+          anyOf:
+            - type: integer
+              exclusiveMinimum: 0
+            - type: 'null'
+          title: Limit
+      type: object
+      required:
+        - id
+        - quantity
+        - price
+      title: TicketPrice
+      description: Ticket price model.
+    TicketPriceWithUserPurchaseCountDTO:
+      properties:
+        id:
+          type: integer
+          exclusiveMinimum: 0
+          title: Id
+        quantity:
+          type: integer
+          exclusiveMinimum: 0
+          title: Quantity
+        price:
+          type: integer
+          exclusiveMinimum: 0
+          title: Price
+        limit:
+          anyOf:
+            - type: integer
+              exclusiveMinimum: 0
+            - type: 'null'
+          title: Limit
+        user_purchases:
+          anyOf:
+            - type: integer
+              minimum: 0
+            - type: 'null'
+          title: User Purchases
+      type: object
+      required:
+        - id
+        - quantity
+        - price
+      title: TicketPriceWithUserPurchaseCountDTO
+      description: Ticket price model with user purchases count.
+    TicketPurchase:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        ticket_price:
+          $ref: '#/components/schemas/TicketPrice'
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        telegram_payment_charge_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Telegram Payment Charge Id
+        is_paid:
+          type: boolean
+          title: Is Paid
+      type: object
+      required:
+        - id
+        - ticket_price
+        - user_id
+        - created_at
+        - updated_at
+        - is_paid
+      title: TicketPurchase
+      description: Ticket purchase by user data transfer object.
+    TokenPairDTO:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        refresh_token:
+          type: string
+          title: Refresh Token
+      type: object
+      required:
+        - access_token
+        - refresh_token
+      title: TokenPairDTO
+      description: Refresh token DTO.
+    TopPlayerDTO:
+      properties:
+        rank:
+          anyOf:
+            - type: integer
+              exclusiveMinimum: 0
+            - type: 'null'
+          title: Rank
+        username:
+          type: string
+          title: Username
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+        mortal_points:
+          type: integer
+          minimum: 0
+          title: Mortal Points
+      type: object
+      required:
+        - rank
+        - username
+        - user_id
+        - mortal_points
+      title: TopPlayerDTO
+      description: Top player data transfer object.
+    TradingFightIDWithStatus:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        status:
+          $ref: '#/components/schemas/TradingFightStatus'
+        txid:
+          type: string
+          title: Txid
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        creator_id:
+          type: string
+          format: uuid
+          title: Creator Id
+      type: object
+      required:
+        - id
+        - status
+        - txid
+        - created_at
+        - updated_at
+        - creator_id
+      title: TradingFightIDWithStatus
+      description: Trading game model.
+    TradingFightResult:
+      properties:
+        user_coin:
+          type: string
+          title: User Coin
+        opponent_coin:
+          type: string
+          title: Opponent Coin
+        user_position_status:
+          anyOf:
+            - $ref: '#/components/schemas/OpenedTradingPosition'
+            - type: 'null'
+        user_closed_positions:
+          items:
+            $ref: '#/components/schemas/TradingPositionStatus'
+          type: array
+          title: User Closed Positions
+          default: []
+        opponent_closed_positions:
+          items:
+            $ref: '#/components/schemas/TradingPositionStatus'
+          type: array
+          title: Opponent Closed Positions
+          default: []
+        id:
+          type: string
+          format: uuid
+          title: Id
+        status:
+          $ref: '#/components/schemas/TradingFightStatus'
+        user_coin_id:
+          type: integer
+          title: User Coin Id
+        opponent_coin_id:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Opponent Coin Id
+        user_id:
+          type: string
+          format: uuid
+          title: User Id
+        opponent_id:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          title: Opponent Id
+        txid:
+          type: string
+          title: Txid
+        user_total_delta:
+          type: string
+          title: User Total Delta
+          description: Sum of user positions delta.
+          readOnly: true
+        opponent_total_delta:
+          type: string
+          title: Opponent Total Delta
+          description: Sum of opponent positions delta.
+          readOnly: true
+        is_win:
+          anyOf:
+            - type: boolean
+            - type: 'null'
+          title: Is Win
+          description: Determine if the user won the fight.
+          readOnly: true
+      type: object
+      required:
+        - user_coin
+        - opponent_coin
+        - id
+        - status
+        - user_coin_id
+        - user_id
+        - txid
+        - user_total_delta
+        - opponent_total_delta
+        - is_win
+      title: TradingFightResult
+      description: Trading fight model.
+    TradingFightStatus:
+      type: string
+      enum:
+        - Ended
+        - Not started
+        - Wait for user join fight confirmation by creator
+        - In progress
+        - Closed
+      title: TradingFightStatus
+      description: Trading game status.
+    TradingPositionStatus:
+      properties:
+        position_start_price:
+          type: string
+          title: Position Start Price
+        position:
+          $ref: '#/components/schemas/PositionEnum'
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        position_end_price:
+          type: string
+          title: Position End Price
+        position_price_change:
+          type: string
+          title: Position Price Change
+          description: Difference between opened and closed price.
+          readOnly: true
+        position_price_percentage_change:
+          type: string
+          title: Position Price Percentage Change
+          description: Percentage change between opened and closed price.
+          readOnly: true
+        position_percentage_delta:
+          type: string
+          title: Position Percentage Delta
+          description: >-
+            Position delta.
+
+
+            Position's profit/loss.
+
+            If position - LONG, positive delta means profit, negative means
+            loss.
+
+            If position - SHORT, positive delta means loss, negative means
+            profit.
+          readOnly: true
+      type: object
+      required:
+        - position_start_price
+        - position
+        - updated_at
+        - position_end_price
+        - position_price_change
+        - position_price_percentage_change
+        - position_percentage_delta
+      title: TradingPositionStatus
+      description: Trading position status.
+    UUIDDTO:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+      type: object
+      required:
+        - id
+      title: UUIDDTO
+      description: DTO with uuid field.
+    UserDetails:
+      properties:
+        id:
+          type: string
+          format: uuid
+          title: Id
+        username:
+          type: string
+          title: Username
+        tickets:
+          type: integer
+          minimum: 0
+          title: Tickets
+          default: 0
+        mortal_points:
+          type: integer
+          minimum: 0
+          title: Mortal Points
+        wallet_address:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Wallet Address
+        telegram_id:
+          anyOf:
+            - type: integer
+            - type: 'null'
+          title: Telegram Id
+        privy_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+          title: Privy Id
+      type: object
+      required:
+        - id
+        - username
+        - mortal_points
+      title: UserDetails
+      description: User model with extended fields.
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+              - type: string
+              - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+        - loc
+        - msg
+        - type
+      title: ValidationError
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

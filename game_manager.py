@@ -483,24 +483,24 @@ class GameManager:
                     
                     # Execute trading decision
                     try:
-                        await self._execute_decision(game_id, decision, current_position, position_open_time)
+                        success = await self._execute_decision(game_id, decision, current_position, position_open_time)
                     except Exception as e:
                         logger.error(f"Failed to execute decision: {e}")
                         await asyncio.sleep(5)
                         continue
                     
                     # Update position tracking
-                    if decision.action == "open_long":
+                    if success and decision.action == "open_long":
                         current_position = "long"
                         position_entry_price = market_data.current_price
                         position_open_time = datetime.now()
                         logger.info(f"\033[92m📈 Opened LONG position at {position_entry_price}\033[0m")
-                    elif decision.action == "open_short":
+                    elif success and decision.action == "open_short":
                         current_position = "short"
                         position_entry_price = market_data.current_price
                         position_open_time = datetime.now()
                         logger.info(f"\033[92m📉 Opened SHORT position at {position_entry_price}\033[0m")
-                    elif decision.action == "close_position" and current_position:
+                    elif success and decision.action == "close_position" and current_position:
                         logger.info(f"\033[93m🔒 Closing {current_position.upper()} position\033[0m")
                         current_position = None
                         position_entry_price = None
@@ -528,8 +528,12 @@ class GameManager:
         decision: TradingDecision,
         current_position: Optional[str],
         position_open_time: Optional[datetime]
-    ):
-        """Execute a trading decision."""
+    ) -> bool:
+        """Execute a trading decision.
+
+        Returns True if on-chain action succeeded (tx mined with status=1),
+        otherwise False. For non-action decisions (hold) returns False.
+        """
         try:
             if decision.action in ["open_long", "open_short"] and not current_position:
                 # Open a new position
@@ -540,8 +544,7 @@ class GameManager:
                 logger.info(f"\033[94m📈 Opening {direction.name} position in game {game_id}\033[0m")
                 logger.info(f"\033[93m🎲 Generated nonce: {nonce}\033[0m")
                 
-                # Calculate hashed direction
-                from eth_abi import encode
+                # Backend now hashes and signs. We send plaintext (direction, nonce)
                 # Ensure all values are within valid ranges
                 if game_id < 0 or game_id > 2**256 - 1:
                     logger.error(f"Invalid game_id for hashing: {game_id}")
@@ -549,26 +552,45 @@ class GameManager:
                 if nonce < 0 or nonce > 2**256 - 1:
                     logger.error(f"Invalid nonce for hashing: {nonce}")
                     return
-                    
-                encoded_data = encode(['uint256', 'uint8', 'uint256'], [game_id, direction, nonce])
-                hashed_direction = self.web3.keccak(encoded_data)
-                
-                logger.info(f"\033[93m🔐 Hashed direction: {hashed_direction.hex()}\033[0m")
-                
-                # Get backend signature
-                logger.info(f"\033[93m🔐 Getting backend signature for position...\033[0m")
-                backend_signature = await self.backend_client.get_post_position_signature(
+
+                # Get backend signature by sending UNHASHED payload
+                logger.info(f"\033[93m🔐 Getting backend signature for position (unhashed payload)...\033[0m")
+                sign_response = await self.backend_client.get_post_position_signature(
                     game_id=game_id,
                     player_address=self.bot_address,
-                    hashed_direction=hashed_direction
+                    direction=int(direction),
+                    nonce=nonce,
                 )
-                
-                if not backend_signature:
+
+                if not sign_response:
                     logger.error(f"\033[31m❌ Failed to get backend signature for position\033[0m")
                     return
-                    
+
+                backend_signature_hex = sign_response.get("backend_signature")
+                signed_message = sign_response.get("signed_message", {}) or {}
+                hashed_direction_hex = signed_message.get("hashedDirection")
+
+                if not backend_signature_hex:
+                    logger.error("Missing backend_signature in sign-position response")
+                    return
+
+                # Convert to proper types for contract call
+                backend_signature_bytes = bytes.fromhex(backend_signature_hex.replace("0x", ""))
+
+                if not hashed_direction_hex:
+                    logger.warning("Backend response missing hashedDirection; computing locally as fallback")
+                    try:
+                        from eth_abi import encode
+                        encoded_data = encode(['uint256', 'uint8', 'uint256'], [game_id, int(direction), int(nonce)])
+                        hashed_direction = self.web3.keccak(encoded_data)
+                        hashed_direction_hex = hashed_direction.hex()
+                    except Exception as e:
+                        logger.error(f"Failed to compute local hashedDirection fallback: {e}")
+                        return
+
                 logger.info(f"\033[92m✅ Got backend signature, ready to post position...\033[0m")
-                logger.info(f"\033[93m📋 Backend signature: {backend_signature.hex()}\033[0m")
+                logger.info(f"\033[93m📋 Backend signature: {backend_signature_hex[:20]}...\033[0m")
+                logger.info(f"\033[93m🏷️ Hashed direction: {hashed_direction_hex}\033[0m")
                 
                 # Build and send transaction
                 # Ensure game_id is within valid range
@@ -578,8 +600,8 @@ class GameManager:
                     
                 post_position_function = self.contract.functions.postPosition(
                     game_id,
-                    hashed_direction,
-                    backend_signature
+                    hashed_direction_hex,
+                    backend_signature_bytes
                 )
                 
                 tx_hash, receipt = build_sign_send_transaction(
@@ -601,6 +623,7 @@ class GameManager:
                 )
                 self.db.record_position(position_record)
                 logger.info(f"\033[92m💾 Position recorded in database with nonce: {nonce}\033[0m")
+                return True
                 
             elif decision.action == "close_position" and current_position:
                 logger.info(f"[TRACE] Entered close_position block with current_position={current_position}, position_open_time={position_open_time}")
@@ -641,12 +664,14 @@ class GameManager:
                 
                 logger.info(f"\033[92m✅ Position closed successfully! Transaction: {tx_hash}\033[0m")
                 logger.info(f"\033[93m📋 Gas used: {receipt['gasUsed']}\033[0m")
+                return True
                 
             else:
                 logger.info(f"\033[33m⏸️  No action taken: {decision.action}\033[0m")
-                
+                return False
         except Exception as e:
             logger.error(f"\033[31m❌ Error executing decision: {e}\033[0m")
+            return False
             
     async def _finish_game(self, game_id: int, current_position: Optional[str]):
         """Finish a game."""
