@@ -160,39 +160,47 @@ class BackendClient:
         self,
         game_id: int,
         player_address: str,
-        hashed_direction: bytes
-    ) -> Optional[bytes]:
-        """Get backend signature for posting a position."""
+        direction: int,
+        nonce: int | str,
+    ) -> Optional[Dict[str, Any]]:
+        """Request backend signature for posting a position using UNHASHED payload.
+
+        Returns the full backend response dict on success, otherwise None. The
+        response is expected to include keys: "backend_signature" and
+        "signed_message" where signed_message may include "hashedDirection".
+        """
         await self._authenticate()
-        
+
         try:
-            # Use the correct endpoint from frontend: /api/v1/games/trading-fights/sign-position/
             url = f"{self.api_url}/api/v1/games/trading-fights/sign-position/"
-            
+
             data = {
                 "gameId": game_id,
                 "player": player_address,
-                "hashedDirection": "0x" + hashed_direction.hex()
+                "direction": int(direction),
+                # send nonce as string to avoid precision issues in JSON
+                "nonce": str(nonce),
             }
-            
+
             headers = {"Authorization": f"Bearer {self.auth_token}"}
-            
+
             async with self.session.post(url, json=data, headers=headers) as response:
                 response_text = await response.text()
                 logger.info(f"Position signature API response: {response.status} - {response_text}")
-                
+
                 if response.status == 200:
                     result = await response.json()
-                    signature_hex = result.get("backend_signature")
-                    if signature_hex:
-                        return bytes.fromhex(signature_hex.replace("0x", ""))
-                    else:
-                        logger.error("No signature in response")
+                    # Basic validation
+                    if not isinstance(result, dict) or "backend_signature" not in result:
+                        logger.error("Unexpected sign-position response format")
                         return None
+                    return result
                 else:
-                    logger.error(f"Failed to get position signature: {response.status} - {response_text}")
+                    logger.error(
+                        f"Failed to get position signature: {response.status} - {response_text}"
+                    )
                     return None
-                    
+
         except Exception as e:
             logger.error(f"Error getting position signature: {e}")
             return None

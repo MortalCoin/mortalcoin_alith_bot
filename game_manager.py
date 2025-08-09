@@ -540,8 +540,7 @@ class GameManager:
                 logger.info(f"\033[94m📈 Opening {direction.name} position in game {game_id}\033[0m")
                 logger.info(f"\033[93m🎲 Generated nonce: {nonce}\033[0m")
                 
-                # Calculate hashed direction
-                from eth_abi import encode
+                # Backend now hashes and signs. We send plaintext (direction, nonce)
                 # Ensure all values are within valid ranges
                 if game_id < 0 or game_id > 2**256 - 1:
                     logger.error(f"Invalid game_id for hashing: {game_id}")
@@ -549,26 +548,45 @@ class GameManager:
                 if nonce < 0 or nonce > 2**256 - 1:
                     logger.error(f"Invalid nonce for hashing: {nonce}")
                     return
-                    
-                encoded_data = encode(['uint256', 'uint8', 'uint256'], [game_id, direction, nonce])
-                hashed_direction = self.web3.keccak(encoded_data)
-                
-                logger.info(f"\033[93m🔐 Hashed direction: {hashed_direction.hex()}\033[0m")
-                
-                # Get backend signature
-                logger.info(f"\033[93m🔐 Getting backend signature for position...\033[0m")
-                backend_signature = await self.backend_client.get_post_position_signature(
+
+                # Get backend signature by sending UNHASHED payload
+                logger.info(f"\033[93m🔐 Getting backend signature for position (unhashed payload)...\033[0m")
+                sign_response = await self.backend_client.get_post_position_signature(
                     game_id=game_id,
                     player_address=self.bot_address,
-                    hashed_direction=hashed_direction
+                    direction=int(direction),
+                    nonce=nonce,
                 )
-                
-                if not backend_signature:
+
+                if not sign_response:
                     logger.error(f"\033[31m❌ Failed to get backend signature for position\033[0m")
                     return
-                    
+
+                backend_signature_hex = sign_response.get("backend_signature")
+                signed_message = sign_response.get("signed_message", {}) or {}
+                hashed_direction_hex = signed_message.get("hashedDirection")
+
+                if not backend_signature_hex:
+                    logger.error("Missing backend_signature in sign-position response")
+                    return
+
+                # Convert to proper types for contract call
+                backend_signature_bytes = bytes.fromhex(backend_signature_hex.replace("0x", ""))
+
+                if not hashed_direction_hex:
+                    logger.warning("Backend response missing hashedDirection; computing locally as fallback")
+                    try:
+                        from eth_abi import encode
+                        encoded_data = encode(['uint256', 'uint8', 'uint256'], [game_id, int(direction), int(nonce)])
+                        hashed_direction = self.web3.keccak(encoded_data)
+                        hashed_direction_hex = hashed_direction.hex()
+                    except Exception as e:
+                        logger.error(f"Failed to compute local hashedDirection fallback: {e}")
+                        return
+
                 logger.info(f"\033[92m✅ Got backend signature, ready to post position...\033[0m")
-                logger.info(f"\033[93m📋 Backend signature: {backend_signature.hex()}\033[0m")
+                logger.info(f"\033[93m📋 Backend signature: {backend_signature_hex[:20]}...\033[0m")
+                logger.info(f"\033[93m🏷️ Hashed direction: {hashed_direction_hex}\033[0m")
                 
                 # Build and send transaction
                 # Ensure game_id is within valid range
@@ -578,8 +596,8 @@ class GameManager:
                     
                 post_position_function = self.contract.functions.postPosition(
                     game_id,
-                    hashed_direction,
-                    backend_signature
+                    hashed_direction_hex,
+                    backend_signature_bytes
                 )
                 
                 tx_hash, receipt = build_sign_send_transaction(

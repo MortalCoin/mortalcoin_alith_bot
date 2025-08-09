@@ -183,14 +183,6 @@ The bot includes a self-contained blockchain module that handles:
 - Transaction building and signing
 - Gas estimation and optimization
 
-### ABI Files Layout
-
-- **Smart contract ABI**: stored in `contract_abi.json` at the project root. The bot loads this by default in `blockchain/connection.py` via `get_contract(...)`.
-- **Backend ABI utilities**: stored in `backend_abi.yaml` at the project root for reference/utilities. The previous Python module `backend_abi.py` has been removed.
-
-Notes:
-- The old `abi.json` file has been removed. If you need to point to a custom ABI, pass an explicit `abi_path` to `blockchain.get_contract(...)`.
-
 ## Database Schema
 
 ### Games Table
