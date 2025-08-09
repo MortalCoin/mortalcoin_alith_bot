@@ -62,6 +62,9 @@ class GameManager:
         # Track active games
         self.active_games: Dict[int, asyncio.Task] = {}
         
+        # Track the trading fight UUID we are currently joining (to call start-fight later)
+        self.pending_trading_fight_id: Optional[str] = None
+        
         # Running flag
         self.running = False
         
@@ -227,6 +230,9 @@ class GameManager:
                 logger.error(f"\033[31m❌ No creator_id found in game_data: {game_data}\033[0m")
                 return
             
+            # Remember UUID for this trading fight so we can call start-fight after successful join
+            self.pending_trading_fight_id = str(game_id)
+            
             # Set signature expiration (current time + 5 minutes)
             signature_expiration = int(time.time()) + 300
             
@@ -319,10 +325,22 @@ class GameManager:
                 
                 # Notify backend about successful join (optional) and start fight in backend
                 await self.backend_client.notify_game_joined(numeric_game_id, tx_hash)
-                # Frontend calls start-fight after successful join; replicate here
-                # We have only UUID trading_fight_id in original message
-                trading_fight_id = str(game_id)
-                await self.backend_client.start_trading_fight(trading_fight_id)
+                # Frontend calls start-fight after successful join; replicate here using UUID
+                # Prefer trading_fight_id from WS payload if present, otherwise fallback to the pending UUID set at join time
+                trading_fight_uuid = (
+                    data.get("trading_fight_id")
+                    if isinstance(data.get("trading_fight_id"), str)
+                    else None
+                ) or self.pending_trading_fight_id
+
+                if trading_fight_uuid:
+                    await self.backend_client.start_trading_fight(trading_fight_uuid)
+                else:
+                    logger.warning(
+                        "No trading_fight_id UUID available to call start-fight; skipping notification"
+                    )
+                # Clear pending UUID after attempt
+                self.pending_trading_fight_id = None
                 
             except Exception as e:
                 logger.error(f"\033[31m❌ Error calling joinGame: {e}\033[0m")
