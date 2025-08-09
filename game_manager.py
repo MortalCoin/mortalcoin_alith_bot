@@ -483,24 +483,24 @@ class GameManager:
                     
                     # Execute trading decision
                     try:
-                        await self._execute_decision(game_id, decision, current_position, position_open_time)
+                        success = await self._execute_decision(game_id, decision, current_position, position_open_time)
                     except Exception as e:
                         logger.error(f"Failed to execute decision: {e}")
                         await asyncio.sleep(5)
                         continue
                     
                     # Update position tracking
-                    if decision.action == "open_long":
+                    if success and decision.action == "open_long":
                         current_position = "long"
                         position_entry_price = market_data.current_price
                         position_open_time = datetime.now()
                         logger.info(f"\033[92m📈 Opened LONG position at {position_entry_price}\033[0m")
-                    elif decision.action == "open_short":
+                    elif success and decision.action == "open_short":
                         current_position = "short"
                         position_entry_price = market_data.current_price
                         position_open_time = datetime.now()
                         logger.info(f"\033[92m📉 Opened SHORT position at {position_entry_price}\033[0m")
-                    elif decision.action == "close_position" and current_position:
+                    elif success and decision.action == "close_position" and current_position:
                         logger.info(f"\033[93m🔒 Closing {current_position.upper()} position\033[0m")
                         current_position = None
                         position_entry_price = None
@@ -528,8 +528,12 @@ class GameManager:
         decision: TradingDecision,
         current_position: Optional[str],
         position_open_time: Optional[datetime]
-    ):
-        """Execute a trading decision."""
+    ) -> bool:
+        """Execute a trading decision.
+
+        Returns True if on-chain action succeeded (tx mined with status=1),
+        otherwise False. For non-action decisions (hold) returns False.
+        """
         try:
             if decision.action in ["open_long", "open_short"] and not current_position:
                 # Open a new position
@@ -619,6 +623,7 @@ class GameManager:
                 )
                 self.db.record_position(position_record)
                 logger.info(f"\033[92m💾 Position recorded in database with nonce: {nonce}\033[0m")
+                return True
                 
             elif decision.action == "close_position" and current_position:
                 logger.info(f"[TRACE] Entered close_position block with current_position={current_position}, position_open_time={position_open_time}")
@@ -659,12 +664,14 @@ class GameManager:
                 
                 logger.info(f"\033[92m✅ Position closed successfully! Transaction: {tx_hash}\033[0m")
                 logger.info(f"\033[93m📋 Gas used: {receipt['gasUsed']}\033[0m")
+                return True
                 
             else:
                 logger.info(f"\033[33m⏸️  No action taken: {decision.action}\033[0m")
-                
+                return False
         except Exception as e:
             logger.error(f"\033[31m❌ Error executing decision: {e}\033[0m")
+            return False
             
     async def _finish_game(self, game_id: int, current_position: Optional[str]):
         """Finish a game."""
