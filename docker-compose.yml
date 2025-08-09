@@ -27,7 +27,7 @@ services:
     container_name: mortalcoin-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6380:6380"
     volumes:
       - redis-data:/data
     networks:
