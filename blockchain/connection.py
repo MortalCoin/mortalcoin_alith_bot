@@ -44,7 +44,7 @@ def get_contract(web3: Web3, contract_address: str, abi_path: Optional[str] = No
     """Get contract instance using ABI from file."""
     if not abi_path:
         # Default ABI path relative to this file
-        abi_path = Path(__file__).parent.parent / "abi.json"
+        abi_path = Path(__file__).parent.parent / "contract_abi.json"
     
     with open(abi_path, "r") as f:
         abi = json.load(f)
