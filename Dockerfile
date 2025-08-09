@@ -1,30 +1,30 @@
 FROM python:3.11-slim
 
+# Prevent Python from writing .pyc files and enable unbuffered logs
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install system dependencies required for building some python packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the bot code
-COPY mortalcoin_bot/ ./mortalcoin_bot/
-COPY mortalcoin_evm_cli/ ./mortalcoin_evm_cli/
-
-# Copy the run script
-COPY run_bot.py .
+# Copy application code recursively (filtered by .dockerignore)
+COPY . .
 
 # Create directory for database
 RUN mkdir -p /data
 
-# Set environment variable for database path
+# Default path for DB inside container
 ENV MORTALCOIN_DB_PATH=/data/mortalcoin_bot.db
 
-# Run the bot
-CMD ["python", "run_bot.py", "run"]
+# Default command
+CMD ["python", "main.py", "run"]

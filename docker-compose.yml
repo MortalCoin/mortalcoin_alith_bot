@@ -7,6 +7,9 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      # Fallback DB path inside container if not provided in .env
+      - MORTALCOIN_DB_PATH=/data/mortalcoin_bot.db
     volumes:
       - bot-data:/data
     logging:
@@ -14,6 +17,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    command: ["python", "main.py", "run"]
     networks:
       - mortalcoin-network
 

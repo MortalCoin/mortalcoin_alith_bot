@@ -1,25 +1,22 @@
-mortalcoin_bot.db
-
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
 venv/
-.env 
+.env
 *.env
 
 # git
-.git 
+.git
 .gitignore
 
 *.db
 /data/
 
 .vscode/
-.idea/  
+.idea/
 .DS_Store
 
 .coverage
 .pytest_cache/
-
