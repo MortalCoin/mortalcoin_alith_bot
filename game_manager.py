@@ -317,8 +317,12 @@ class GameManager:
                 logger.info(f"\033[92m✅ Successfully called joinGame! Transaction: {tx_hash}\033[0m")
                 logger.info(f"\033[93m📋 Gas used: {receipt['gasUsed']}\033[0m")
                 
-                # Notify backend about successful join
+                # Notify backend about successful join (optional) and start fight in backend
                 await self.backend_client.notify_game_joined(numeric_game_id, tx_hash)
+                # Frontend calls start-fight after successful join; replicate here
+                # We have only UUID trading_fight_id in original message
+                trading_fight_id = str(game_id)
+                await self.backend_client.start_trading_fight(trading_fight_id)
                 
             except Exception as e:
                 logger.error(f"\033[31m❌ Error calling joinGame: {e}\033[0m")

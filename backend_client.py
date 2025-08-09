@@ -308,13 +308,29 @@ class BackendClient:
         await self._ensure_session()
         
         try:
-            # For now, we'll skip this notification as it might not be needed
-            # The backend might track this automatically through blockchain events
+            # For now, just log and return success
             logger.info(f"Bot joined game {game_id} with tx {tx_hash}")
             return True
                     
         except Exception as e:
             logger.error(f"Error notifying game joined: {e}")
+            return False
+
+    async def start_trading_fight(self, trading_fight_id: str) -> bool:
+        """Notify backend to start the trading fight after successful joinGame."""
+        await self._authenticate()
+        try:
+            url = f"{self.api_url}/api/v1/games/trading-fights/{trading_fight_id}/start-fight/"
+            status, response_text, _ = await self._request_with_retry(
+                "POST", url, require_auth=True
+            )
+            if status in (200, 204):
+                logger.info(f"\033[92m✅ Backend start-fight acknowledged for {trading_fight_id}\033[0m")
+                return True
+            logger.error(f"\033[31m❌ Failed to start fight: {status} - {response_text}\033[0m")
+            return False
+        except Exception as e:
+            logger.error(f"Error starting trading fight {trading_fight_id}: {e}")
             return False
             
     async def get_price_data(self, pool_address: str) -> Optional[Dict[str, Any]]:
