@@ -21,6 +21,7 @@ class BackendClient:
         self.privy_key = privy_key
         self.session: Optional[aiohttp.ClientSession] = None
         self.auth_token: Optional[str] = None
+        self.refresh_token: Optional[str] = None
         self.user_id: Optional[str] = None
         
     async def __aenter__(self):
@@ -37,6 +38,80 @@ class BackendClient:
         """Ensure aiohttp session exists."""
         if not self.session:
             self.session = aiohttp.ClientSession()
+
+    async def _refresh_access_token(self) -> bool:
+        """Refresh access token using stored refresh token."""
+        if not self.refresh_token:
+            logger.warning("No refresh token available for access token refresh")
+            return False
+        await self._ensure_session()
+        try:
+            url = f"{self.api_url}/api/v1/users/auth/refresh/"
+            headers = {"Authorization": f"Bearer {self.refresh_token}"}
+            async with self.session.post(url, headers=headers) as response:
+                text = await response.text()
+                if response.status == 200:
+                    data = await response.json()
+                    new_access = data.get("access_token")
+                    if new_access:
+                        self.auth_token = new_access
+                        logger.info("\033[92m🔄 Access token refreshed\033[0m")
+                        return True
+                    logger.error("Refresh response missing access_token")
+                    return False
+                else:
+                    logger.error(f"Failed to refresh access token: {response.status} - {text}")
+                    # Invalidate access token to force full re-auth on next call
+                    self.auth_token = None
+                    return False
+        except Exception as e:
+            logger.error(f"Error refreshing access token: {e}")
+            return False
+
+    async def _request_with_retry(
+        self,
+        method: str,
+        url: str,
+        *,
+        require_auth: bool = True,
+        **kwargs
+    ) -> tuple[int, str, Optional[Dict[str, Any]]]:
+        """Perform an HTTP request with optional auth, auto-refresh and one retry.
+
+        Returns a tuple: (status_code, response_text, json_dict_or_None).
+        """
+        await self._ensure_session()
+        headers = kwargs.pop("headers", {}) or {}
+        if require_auth:
+            await self._authenticate()
+            headers["Authorization"] = f"Bearer {self.auth_token}"
+
+        async with self.session.request(method, url, headers=headers, **kwargs) as response:
+            resp_text = await response.text()
+            json_data: Optional[Dict[str, Any]] = None
+            content_type = response.headers.get('Content-Type', '')
+            if 'application/json' in content_type:
+                try:
+                    json_data = await response.json()
+                except Exception:
+                    json_data = None
+            status = response.status
+
+            if status in (401, 403) and require_auth:
+                logger.info("Access token may be expired; attempting refresh and retry...")
+                if await self._refresh_access_token():
+                    headers["Authorization"] = f"Bearer {self.auth_token}"
+                    async with self.session.request(method, url, headers=headers, **kwargs) as response2:
+                        resp_text2 = await response2.text()
+                        json_data2: Optional[Dict[str, Any]] = None
+                        content_type2 = response2.headers.get('Content-Type', '')
+                        if 'application/json' in content_type2:
+                            try:
+                                json_data2 = await response2.json()
+                            except Exception:
+                                json_data2 = None
+                        return response2.status, resp_text2, json_data2
+            return status, resp_text, json_data
             
     async def _authenticate(self):
         """Authenticate with backend API using Privy key."""
@@ -59,6 +134,7 @@ class BackendClient:
                 if response.status == 200:
                     result = await response.json()
                     self.auth_token = result.get("access_token")
+                    self.refresh_token = result.get("refresh_token")
                     logger.info("\033[92m✅ Successfully authenticated with backend API\033[0m")
                 else:
                     logger.error(f"\033[31m❌ Failed to authenticate: {response.status} - {response_text}\033[0m")
@@ -75,21 +151,19 @@ class BackendClient:
             
         try:
             url = f"{self.api_url}/api/v1/users/me/"
-            
-            headers = {"Authorization": f"Bearer {self.auth_token}"}
-            
-            async with self.session.get(url, headers=headers) as response:
-                response_text = await response.text()
-                logger.info(f"User info API response: {response.status} - [user data hidden]")
-                
-                if response.status == 200:
-                    result = await response.json()
-                    self.user_id = str(result.get("id"))
-                    logger.info(f"\033[94m👤 Got user ID: {self.user_id}\033[0m")
-                else:
-                    logger.error(f"\033[31m❌ Failed to get user info: {response.status} - {response_text}\033[0m")
-                    raise Exception(f"Failed to get user info: {response.status}")
-                    
+            # Try request; if unauthorized, attempt refresh and retry inside helper
+            status, response_text, result = await self._request_with_retry(
+                "GET", url, require_auth=True
+            )
+            logger.info(f"User info API response: {status} - [user data hidden]")
+            if status == 200 and isinstance(result, dict):
+                self.user_id = str(result.get("id"))
+                logger.info(f"\033[94m👤 Got user ID: {self.user_id}\033[0m")
+            else:
+                logger.error(
+                    f"\033[31m❌ Failed to get user info: {status} - {response_text}\033[0m"
+                )
+                raise Exception(f"Failed to get user info: {status}")
         except Exception as e:
             logger.error(f"Error getting user info: {e}")
             raise
@@ -115,23 +189,18 @@ class BackendClient:
                 "coin_id": coin_id
             }
             
-            headers = {"Authorization": f"Bearer {self.auth_token}"}
-            
-            async with self.session.post(url, json=data, headers=headers) as response:
-                response_text = await response.text()
-                logger.info(f"\033[96m📤 Add opponent API response: {response.status} - {response_text}\033[0m")
-                
-                if response.status in [200, 204]:  # 204 = No Content (successful)
-                    if response.status == 200:
-                        result = await response.json()
-                        return result
-                    else:
-                        # 204 means success but no content
-                        logger.info(f"\033[92m✅ Successfully added opponent to game {game_id}\033[0m")
-                        return {"status": "success"}
-                else:
-                    logger.error(f"\033[31m❌ Failed to add opponent: {response.status} - {response_text}\033[0m")
-                    return None
+            status, response_text, result = await self._request_with_retry(
+                "POST", url, json=data, require_auth=True
+            )
+            logger.info(f"\033[96m📤 Add opponent API response: {status} - {response_text}\033[0m")
+            if status in (200, 204):
+                if status == 200 and isinstance(result, dict):
+                    return result
+                logger.info(f"\033[92m✅ Successfully added opponent to game {game_id}\033[0m")
+                return {"status": "success"}
+            else:
+                logger.error(f"\033[31m❌ Failed to add opponent: {status} - {response_text}\033[0m")
+                return None
                     
         except Exception as e:
             logger.error(f"Error adding opponent: {e}")
@@ -143,14 +212,14 @@ class BackendClient:
         
         try:
             url = f"{self.api_url}/api/v1/games/trading-fights/{trading_fight_id}/"
-            
-            async with self.session.get(url) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    return result
-                else:
-                    logger.error(f"Failed to get trading fight: {response.status}")
-                    return None
+            status, response_text, result = await self._request_with_retry(
+                "GET", url, require_auth=False
+            )
+            if status == 200 and isinstance(result, dict):
+                return result
+            else:
+                logger.error(f"Failed to get trading fight: {status} - {response_text}")
+                return None
                     
         except Exception as e:
             logger.error(f"Error getting trading fight: {e}")
@@ -160,39 +229,37 @@ class BackendClient:
         self,
         game_id: int,
         player_address: str,
-        hashed_direction: bytes
-    ) -> Optional[bytes]:
-        """Get backend signature for posting a position."""
+        direction: int,
+        nonce: int | str,
+    ) -> Optional[Dict[str, Any]]:
+        """Request backend signature for posting a position using UNHASHED payload.
+
+        Returns the full backend response dict on success, otherwise None. The
+        response is expected to include keys: "backend_signature" and
+        "signed_message" where signed_message may include "hashedDirection".
+        """
         await self._authenticate()
-        
+
         try:
-            # Use the correct endpoint from frontend: /api/v1/games/trading-fights/sign-position/
             url = f"{self.api_url}/api/v1/games/trading-fights/sign-position/"
-            
+
             data = {
                 "gameId": game_id,
                 "player": player_address,
-                "hashedDirection": "0x" + hashed_direction.hex()
+                "direction": int(direction),
+                # send nonce as string to avoid precision issues in JSON
+                "nonce": str(nonce),
             }
-            
-            headers = {"Authorization": f"Bearer {self.auth_token}"}
-            
-            async with self.session.post(url, json=data, headers=headers) as response:
-                response_text = await response.text()
-                logger.info(f"Position signature API response: {response.status} - {response_text}")
-                
-                if response.status == 200:
-                    result = await response.json()
-                    signature_hex = result.get("backend_signature")
-                    if signature_hex:
-                        return bytes.fromhex(signature_hex.replace("0x", ""))
-                    else:
-                        logger.error("No signature in response")
-                        return None
-                else:
-                    logger.error(f"Failed to get position signature: {response.status} - {response_text}")
-                    return None
-                    
+
+            status, response_text, result = await self._request_with_retry(
+                "POST", url, json=data, require_auth=True
+            )
+            logger.info(f"Position signature API response: {status} - {response_text}")
+            if status == 200 and isinstance(result, dict) and "backend_signature" in result:
+                return result
+            logger.error("Failed to get position signature (after retry if attempted)")
+            return None
+
         except Exception as e:
             logger.error(f"Error getting position signature: {e}")
             return None
@@ -216,25 +283,21 @@ class BackendClient:
                 "offset": 0
             }
             
-            headers = {"Authorization": f"Bearer {self.auth_token}"}
-            
-            async with self.session.get(url, params=params, headers=headers) as response:
-                response_text = await response.text()
-                logger.info(f"Backend API response: {response.status} - {response_text}")
-                
-                if response.status == 200:
-                    result = await response.json()
-                    # The API returns a paginated response with results array
-                    if isinstance(result, dict) and "results" in result:
-                        return result["results"]
-                    elif isinstance(result, list):
-                        return result
-                    else:
-                        logger.warning(f"Unexpected API response format: {result}")
-                        return []
+            status, response_text, result = await self._request_with_retry(
+                "GET", url, params=params, require_auth=True
+            )
+            logger.info(f"Backend API response: {status} - {response_text}")
+            if status == 200:
+                if isinstance(result, dict) and "results" in result:
+                    return result["results"]
+                elif isinstance(result, list):
+                    return result
                 else:
-                    logger.error(f"Failed to get available games: {response.status} - {response_text}")
+                    logger.warning(f"Unexpected API response format: {result}")
                     return []
+            else:
+                logger.error(f"Failed to get available games: {status} - {response_text}")
+                return []
                     
         except Exception as e:
             logger.error(f"Error getting available games: {e}")
@@ -261,14 +324,14 @@ class BackendClient:
         try:
             # Backend might cache price data or provide additional analytics
             url = f"{self.api_url}/api/v1/pools/{pool_address}/price/"
-            
-            async with self.session.get(url) as response:
-                if response.status == 200:
-                    return await response.json()
-                else:
-                    logger.debug(f"Failed to get price data from backend: {response.status}")
-                    return None
-                    
+            status, response_text, result = await self._request_with_retry(
+                "GET", url, require_auth=False
+            )
+            if status == 200 and isinstance(result, dict):
+                return result
+            else:
+                logger.debug(f"Failed to get price data from backend: {status} - {response_text}")
+                return None
         except Exception as e:
             logger.debug(f"Error getting price data from backend: {e}")
             return None
