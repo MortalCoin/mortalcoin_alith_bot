@@ -18,16 +18,8 @@ class BotConfig:
     
     # AI settings
     openai_api_key: str
-    
-    # Authentication settings
-    # Legacy Privy auth token (optional if headless auth is used)
-    privy_key: Optional[str] = None
-    # Headless auth controls
-    use_headless_auth: bool = True
-    headless_message: str = "Login MortalCoin headless"
-    privy_user_id: Optional[str] = None
-    
-    # Pool settings
+
+    # Pool settings (required)
     bot_pool_address: str
     
     # Backend API settings
@@ -54,6 +46,14 @@ class BotConfig:
     
     # Database settings
     db_path: str = "mortalcoin_bot.db"
+
+    # Authentication settings (optional / defaults below)
+    # Legacy Privy auth token (optional if headless auth is used)
+    privy_key: Optional[str] = None
+    # Headless auth controls
+    use_headless_auth: bool = True
+    headless_message: str = "Login MortalCoin headless"
+    privy_user_id: Optional[str] = None
     
     @classmethod
     def from_env(cls) -> "BotConfig":
