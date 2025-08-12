@@ -63,6 +63,8 @@ class GameManager:
         # Initialize WebSocket client for notifications
         ws_url = config.backend_api_url.replace("https://", "wss://").replace("http://", "ws://") + "/ws/users/notifications/"
         self.websocket_client = WebSocketClient(ws_url, "")
+        self.websocket_task: Optional[asyncio.Task] = None
+        self._last_ws_token_sent: Optional[str] = None
         
         # Initialize price feed manager
         self.price_feed_manager = PriceFeedManager(self.web3, self.contract, self.backend_client)
@@ -90,14 +92,7 @@ class GameManager:
         await self.backend_client._authenticate()
         
         # Connect to WebSocket for notifications
-        self.websocket_client.auth_token = self.backend_client.auth_token
-        if await self.websocket_client.connect():
-            # Add handlers for different message types
-            self.websocket_client.add_message_handler("signature_ready", self._handle_signature_ready)
-            self.websocket_client.add_message_handler("game_joined", self._handle_game_joined)
-            
-            # Start WebSocket listener
-            self.websocket_task = asyncio.create_task(self.websocket_client.listen())
+        await self._connect_websocket_with_current_token()
         
         # Start monitoring loop
         monitor_task = asyncio.create_task(self._monitor_games())
@@ -139,6 +134,9 @@ class GameManager:
         
         while self.running:
             try:
+                # Ensure WS connection is healthy and token is up to date
+                await self._ensure_websocket_health()
+
                 # Log WebSocket status periodically
                 current_time = time.time()
                 if current_time - last_ws_status_time >= ws_status_interval:
@@ -184,6 +182,42 @@ class GameManager:
                 # Searching for games - can be less frequent
                 logger.debug(f"Sleeping {self.config.game_search_interval_seconds}s (searching)")
                 await asyncio.sleep(self.config.game_search_interval_seconds)
+
+    async def _connect_websocket_with_current_token(self) -> None:
+        """Connect WS using the latest JWT and start listener."""
+        # Make sure we have a token
+        await self.backend_client._authenticate()
+        # Recreate or reuse client with updated token
+        self.websocket_client.auth_token = self.backend_client.auth_token or ""
+        # Ensure any previous WS is closed
+        if getattr(self, "websocket_task", None):
+            try:
+                self.websocket_task.cancel()
+            except Exception:
+                pass
+        await self.websocket_client.disconnect()
+        if await self.websocket_client.connect():
+            # Add handlers once (idempotent)
+            self.websocket_client.add_message_handler("signature_ready", self._handle_signature_ready)
+            self.websocket_client.add_message_handler("game_joined", self._handle_game_joined)
+            # Start listening
+            self.websocket_task = asyncio.create_task(self.websocket_client.listen())
+            self._last_ws_token_sent = self.backend_client.auth_token
+        else:
+            logger.warning("\033[33m⚠️  Failed to (re)connect WebSocket\033[0m")
+
+    async def _ensure_websocket_health(self) -> None:
+        """Reconnect WS if disconnected or token changed after refresh."""
+        # If not connected/running, reconnect
+        ws_connected = bool(self.websocket_client.websocket) and bool(self.websocket_client.running)
+        if not ws_connected:
+            await self._connect_websocket_with_current_token()
+            return
+        # If token changed (e.g., after refresh), reconnect with fresh token
+        current_token = self.backend_client.auth_token
+        if current_token and current_token != self._last_ws_token_sent:
+            logger.info("\033[93m🔄 JWT refreshed; reconnecting WebSocket with fresh token\033[0m")
+            await self._connect_websocket_with_current_token()
 
     async def _find_and_join_game(self):
         """Find and join an available game."""
