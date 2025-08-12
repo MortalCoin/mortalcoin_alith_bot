@@ -533,6 +533,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/users/auth_headless/:
+    post:
+      tags:
+        - users
+      summary: Auth Headless
+      description: >-
+        Headless authentication via EVM signature for whitelisted addresses.
+
+
+        Expects an EIP-191 personal_sign signature over `message`. If
+
+        `HEADLESS_AUTH_EXPECTED_MESSAGE` is set, the provided `message` must
+        match
+
+        it exactly. Only addresses from `HEADLESS_AUTH_WHITELIST` are allowed.
+      operationId: auth_headless_api_v1_users_auth_headless__post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HeadlessAuthDTO'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPairDTO'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/users/auth/refresh/:
     post:
       tags:
@@ -1763,6 +1798,28 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    HeadlessAuthDTO:
+      properties:
+        address:
+          type: string
+          title: Address
+        message:
+          type: string
+          title: Message
+        signature:
+          type: string
+          title: Signature
+        privy_id:
+          type: string
+          title: Privy Id
+      type: object
+      required:
+        - address
+        - message
+        - signature
+        - privy_id
+      title: HeadlessAuthDTO
+      description: DTO for headless authentication request.
     JoinSignatureRequestAPIDTO:
       properties:
         game_id:

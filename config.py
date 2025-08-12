@@ -20,7 +20,12 @@ class BotConfig:
     openai_api_key: str
     
     # Authentication settings
-    privy_key: str
+    # Legacy Privy auth token (optional if headless auth is used)
+    privy_key: Optional[str] = None
+    # Headless auth controls
+    use_headless_auth: bool = True
+    headless_message: str = "Login MortalCoin headless"
+    privy_user_id: Optional[str] = None
     
     # Pool settings
     bot_pool_address: str
@@ -58,6 +63,19 @@ class BotConfig:
         if not private_key.startswith("0x"):
             private_key = "0x" + private_key
             
+        # Determine auth mode
+        headless_flag = os.getenv("MORTALCOIN_HEADLESS_AUTH", "1").strip().lower()
+        use_headless_auth = headless_flag in ("1", "true", "yes", "on")
+
+        # Optional Privy key for legacy flow or mapping
+        privy_key = os.getenv("MORTALCOIN_PRIVY_KEY")
+
+        # Optional Privy user id required by backend for headless mapping/creation
+        privy_user_id = os.getenv("MORTALCOIN_PRIVY_USER_ID")
+
+        # Fixed expected message if backend enforces it; otherwise default used
+        headless_message = os.getenv("MORTALCOIN_HEADLESS_MESSAGE", "Login MortalCoin headless")
+
         return cls(
             rpc_url=os.environ["MORTALCOIN_RPC_URL"],
             contract_address=os.environ["MORTALCOIN_CONTRACT_ADDRESS"],
@@ -65,7 +83,10 @@ class BotConfig:
             backend_api_url=os.getenv("MORTALCOIN_BACKEND_API_URL", "https://testapi.mortalcoin.app"),
             alith_model=os.getenv("ALITH_MODEL", "gpt-4"),
             openai_api_key=os.environ["OPENAI_API_KEY"],
-            privy_key=os.environ["MORTALCOIN_PRIVY_KEY"],
+            privy_key=privy_key,
+            use_headless_auth=use_headless_auth,
+            headless_message=headless_message,
+            privy_user_id=privy_user_id,
             bet_amount_eth=float(os.getenv("MORTALCOIN_BET_AMOUNT", "0.0001")),
             bot_pool_address=os.environ["MORTALCOIN_BOT_POOL_ADDRESS"],
 

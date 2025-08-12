@@ -72,7 +72,10 @@ AI-powered trading bot for MortalCoin game using [Alith AI](https://alith.lazai.
    - `MORTALCOIN_RPC_URL`: Ethereum RPC endpoint
    - `MORTALCOIN_CONTRACT_ADDRESS`: MortalCoin contract address
    - `MORTALCOIN_BOT_PRIVATE_KEY`: Bot's private key (with or without 0x prefix)
-   - `MORTALCOIN_PRIVY_KEY`: Your Privy key for backend authentication
+   - `MORTALCOIN_HEADLESS_AUTH`: Enable headless EIP-191 auth (1/0, default 1)
+   - `MORTALCOIN_HEADLESS_MESSAGE`: Message to sign for headless auth (default: Login MortalCoin headless)
+   - `MORTALCOIN_PRIVY_USER_ID`: Optional Privy user id for backend mapping when using headless auth
+   - `MORTALCOIN_PRIVY_KEY`: Legacy Privy key (required only if headless is disabled or as fallback)
    - `MORTALCOIN_BACKEND_API_URL`: Backend API URL (default: https://testapi.mortalcoin.app)
    - `OPENAI_API_KEY`: Your OpenAI API key (used by Alith)
    - `MORTALCOIN_BOT_POOL_ADDRESS`: Bot's whitelisted pool address

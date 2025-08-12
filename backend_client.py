@@ -8,6 +8,8 @@ from typing import Optional, Dict, Any
 import aiohttp
 import asyncio
 from web3 import Web3
+from eth_account import Account
+from eth_account.messages import encode_defunct
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +17,19 @@ logger = logging.getLogger(__name__)
 class BackendClient:
     """Client for interacting with MortalCoin backend API."""
     
-    def __init__(self, api_url: str, bot_address: str, privy_key: str):
+    def __init__(self, api_url: str, bot_address: str, privy_key: Optional[str] = None,
+                 *,
+                 use_headless_auth: bool = True,
+                 headless_message: str = "Login MortalCoin headless",
+                 privy_user_id: Optional[str] = None,
+                 bot_private_key: Optional[str] = None):
         self.api_url = api_url.rstrip('/')
         self.bot_address = bot_address
         self.privy_key = privy_key
+        self.use_headless_auth = use_headless_auth
+        self.headless_message = headless_message
+        self.privy_user_id = privy_user_id
+        self.bot_private_key = bot_private_key
         self.session: Optional[aiohttp.ClientSession] = None
         self.auth_token: Optional[str] = None
         self.refresh_token: Optional[str] = None
@@ -114,35 +125,74 @@ class BackendClient:
             return status, resp_text, json_data
             
     async def _authenticate(self):
-        """Authenticate with backend API using Privy key."""
+        """Authenticate with backend API.
+
+        Prefer headless auth (EIP-191 personal_sign) if enabled, else fallback to legacy Privy token.
+        """
         if self.auth_token is not None:
             return
             
         await self._ensure_session()
         
         try:
-            url = f"{self.api_url}/api/v1/users/auth/"
-            
-            data = {
-                "token": self.privy_key
-            }
-            
-            async with self.session.post(url, json=data) as response:
-                response_text = await response.text()
-                logger.info(f"Auth API response: {response.status} - [token hidden]")
-                
-                if response.status == 200:
-                    result = await response.json()
-                    self.auth_token = result.get("access_token")
-                    self.refresh_token = result.get("refresh_token")
-                    logger.info("\033[92m✅ Successfully authenticated with backend API\033[0m")
-                else:
-                    logger.error(f"\033[31m❌ Failed to authenticate: {response.status} - {response_text}\033[0m")
-                    raise Exception(f"Authentication failed: {response.status}")
+            if self.use_headless_auth:
+                if not self.bot_private_key:
+                    raise RuntimeError("Headless auth enabled but bot_private_key is not provided")
+
+                # Sign message via EIP-191 personal_sign
+                eth_message = encode_defunct(text=self.headless_message)
+                signed = Account.sign_message(eth_message, private_key=self.bot_private_key)
+                signature_hex = Web3.to_hex(signed.signature)
+
+                url = f"{self.api_url}/api/v1/users/auth_headless/"
+                payload: Dict[str, Any] = {
+                    "address": self.bot_address,
+                    "message": self.headless_message,
+                    "signature": signature_hex,
+                }
+                if self.privy_user_id:
+                    payload["privy_id"] = self.privy_user_id
+
+                async with self.session.post(url, json=payload) as response:
+                    response_text = await response.text()
+                    logger.info(f"Auth(headless) API response: {response.status} - [payload hidden]")
+                    if response.status == 200:
+                        result = await response.json()
+                        self.auth_token = result.get("access_token")
+                        self.refresh_token = result.get("refresh_token")
+                        logger.info("\033[92m✅ Headless auth successful\033[0m")
+                    else:
+                        logger.error(f"\033[31m❌ Headless auth failed: {response.status} - {response_text}\033[0m")
+                        # Fallback to legacy auth if possible
+                        if self.privy_key:
+                            await self._authenticate_privy_fallback()
+                        else:
+                            raise Exception(f"Authentication failed: {response.status}")
+            else:
+                await self._authenticate_privy_fallback()
                     
         except Exception as e:
             logger.error(f"Error during authentication: {e}")
             raise
+
+    async def _authenticate_privy_fallback(self):
+        """Legacy authentication with Privy key (compat)."""
+        if not self.privy_key:
+            raise RuntimeError("Privy key not configured for legacy auth fallback")
+        await self._ensure_session()
+        url = f"{self.api_url}/api/v1/users/auth/"
+        data = {"token": self.privy_key}
+        async with self.session.post(url, json=data) as response:
+            response_text = await response.text()
+            logger.info(f"Auth(legacy) API response: {response.status} - [token hidden]")
+            if response.status == 200:
+                result = await response.json()
+                self.auth_token = result.get("access_token")
+                self.refresh_token = result.get("refresh_token")
+                logger.info("\033[92m✅ Legacy auth successful\033[0m")
+            else:
+                logger.error(f"\033[31m❌ Failed to authenticate (legacy): {response.status} - {response_text}\033[0m")
+                raise Exception(f"Authentication failed: {response.status}")
             
     async def _get_user_info(self):
         """Get user information from backend API."""

@@ -50,7 +50,15 @@ class GameManager:
         self.bot_address = self.bot_account.address
         
         # Initialize backend client
-        self.backend_client = BackendClient(config.backend_api_url, self.bot_address, config.privy_key)
+        self.backend_client = BackendClient(
+            config.backend_api_url,
+            self.bot_address,
+            config.privy_key,
+            use_headless_auth=config.use_headless_auth,
+            headless_message=config.headless_message,
+            privy_user_id=config.privy_user_id,
+            bot_private_key=config.bot_private_key,
+        )
         
         # Initialize WebSocket client for notifications
         ws_url = config.backend_api_url.replace("https://", "wss://").replace("http://", "ws://") + "/ws/users/notifications/"
