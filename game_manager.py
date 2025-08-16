@@ -232,7 +232,18 @@ class GameManager:
 
             logger.info(f"Found {len(available_games)} available games from backend")
 
-            for game_data in available_games:
+            # Validate each fight against on-chain state using txid -> GameCreated.event -> gameId
+            try:
+                valid_games = await self._filter_available_games_onchain(available_games)
+            except Exception as e:
+                logger.error(f"Failed to filter games on-chain: {e}")
+                valid_games = []
+
+            if not valid_games:
+                logger.info("No valid games after on-chain filtering")
+                return
+
+            for game_data in valid_games:
                 try:
                     # Backend returns UUID in 'id' field - use it as game_id like frontend does
                     game_id = game_data.get("id")  # Use UUID as game_id
@@ -261,6 +272,53 @@ class GameManager:
             
 
             
+    async def _filter_available_games_onchain(self, games: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Filter out fights that are not actually available on-chain.
+
+        For each item we expect a `txid` (creation transaction). We decode GameCreated to get the
+        numeric gameId and then fetch current game info to ensure it is still in Created state.
+        """
+        if not games:
+            return []
+
+        async def check_game(game: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+            tx_hash = (
+                game.get("txid")
+                or game.get("tx_hash")
+                or game.get("txHash")
+            )
+            if not tx_hash:
+                logger.debug(f"Skipping game without txid: {game.get('id')}")
+                return None
+            try:
+                # Get receipt in thread executor to avoid blocking loop
+                receipt = await asyncio.get_event_loop().run_in_executor(
+                    None, self.web3.eth.get_transaction_receipt, tx_hash
+                )
+                # Decode GameCreated event to extract gameId
+                events = self.contract.events.GameCreated().process_receipt(receipt)
+                if not events:
+                    logger.info(f"No GameCreated event in tx {tx_hash}; dropping fight {game.get('id')}")
+                    return None
+                onchain_game_id = int(events[0]["args"]["gameId"])  # type: ignore[index]
+                # Fetch current game info
+                info = get_game_info(self.contract, onchain_game_id)
+                # GameState: 1 = Created, 2 = Started, 3 = Finished (by convention in our code)
+                if info["state"] != 1:
+                    logger.info(
+                        f"Filtering out stale fight {game.get('id')} (gameId {onchain_game_id}) with state {info['state']}"
+                    )
+                    return None
+                # Attach on-chain numeric id for downstream usage if needed
+                game["onchain_game_id"] = onchain_game_id
+                return game
+            except Exception as e:
+                logger.debug(f"On-chain validation failed for fight {game.get('id')}: {e}")
+                return None
+
+        # Run checks concurrently
+        checked = await asyncio.gather(*(check_game(g) for g in games))
+        return [g for g in checked if g]
     async def _join_game(self, game_id: str, game_data: Dict):
         """Join a specific game using UUID from backend."""
         try:
@@ -332,8 +390,15 @@ class GameManager:
                 # Convert game_id to int (it comes as string from backend)
                 numeric_game_id = int(game_id)
                 
-                # Get pool address from config
-                pool_address = self.config.bot_pool_address
+                # Get pool address from config and ensure checksum format
+                pool_address_raw = self.config.bot_pool_address
+                try:
+                    pool_address = Web3.to_checksum_address(pool_address_raw)
+                except Exception as addr_err:
+                    logger.error(
+                        f"Invalid pool address configured: {pool_address_raw} - {addr_err}"
+                    )
+                    return
                 
                 # Calculate signature expiration
                 signature_expiration = timestamp + ttl
